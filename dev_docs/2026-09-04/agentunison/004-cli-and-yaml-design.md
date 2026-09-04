@@ -7,15 +7,15 @@ same pipeline exposed for inspection and control.
 
 | Command | What it does | Writes? |
 |---|---|---|
-| `agentconcord init` | Fresh repo: detect harnesses, write manifest + skeleton `AGENTS.md` + projections + ledger, verify. Existing setup detected → runs `audit` + `plan`, prints the plan, and (interactive) asks per approval group; non-interactive: applies only `safe` actions and prints what awaits approval. | yes (planned only) |
-| `agentconcord inspect` | Inventory: every harness surface found, classified, with evidence. `--json`. | no |
-| `agentconcord audit` | Findings over the inventory (duplicates, stale, conflicts, budgets, portability, overlap). Exit 0/2 (findings). | no |
-| `agentconcord plan` | The action list with risk classes and reasons; the dry run. `--json`, `--diff` for MODIFY actions. Exit 0 (nothing to do) / 3 (actions pending). | writes `.agentconcord/plan.json` only with `--save` |
-| `agentconcord apply` | Executes the plan. Default: `safe` actions only. `--approve <id,…>\|all` for `review` actions; `--allow-delete` additionally required for DELETE. `--plan <file>` to apply a saved plan exactly. | yes |
-| `agentconcord verify` | Structural validation against ledger + matrix; `--live` adds real-harness probes (timeouts; per-harness result: verified / structural-only / not-installed / failed). Exit 0 / 4 (drift) / 5 (managed block damaged) / 6 (live probe failed). | no |
-| `agentconcord status` | One-screen summary: targets, canonical paths, projections and their mechanism, drift count, quarantine count. | no |
-| `agentconcord doctor` | Environment: installed harness binaries + versions vs matrix `versionsVerified`, platform symlink/junction probe result, git state (worktree, `core.symlinks`), manifest validity. | no |
-| `agentconcord uninstall` | Remove every ledgered managed path (land-before-delete reversed: restore quarantine → remove shims/links/copies/blocks → remove ledger). `--keep-canonical` is implicit: canonical content is never removed. | yes |
+| `agentunison init` | Fresh repo: detect harnesses, write manifest + skeleton `AGENTS.md` + projections + ledger, verify. Existing setup detected → runs `audit` + `plan`, prints the plan, and (interactive) asks per approval group; non-interactive: applies only `safe` actions and prints what awaits approval. | yes (planned only) |
+| `agentunison inspect` | Inventory: every harness surface found, classified, with evidence. `--json`. | no |
+| `agentunison audit` | Findings over the inventory (duplicates, stale, conflicts, budgets, portability, overlap). Exit 0/2 (findings). | no |
+| `agentunison plan` | The action list with risk classes and reasons; the dry run. `--json`, `--diff` for MODIFY actions. Exit 0 (nothing to do) / 3 (actions pending). | writes `.agentunison/plan.json` only with `--save` |
+| `agentunison apply` | Executes the plan. Default: `safe` actions only. `--approve <id,…>\|all` for `review` actions; `--allow-delete` additionally required for DELETE. `--plan <file>` to apply a saved plan exactly. | yes |
+| `agentunison verify` | Structural validation against ledger + matrix; `--live` adds real-harness probes (timeouts; per-harness result: verified / structural-only / not-installed / failed). Exit 0 / 4 (drift) / 5 (managed block damaged) / 6 (live probe failed). | no |
+| `agentunison status` | One-screen summary: targets, canonical paths, projections and their mechanism, drift count, quarantine count. | no |
+| `agentunison doctor` | Environment: installed harness binaries + versions vs matrix `versionsVerified`, platform symlink/junction probe result, git state (worktree, `core.symlinks`), manifest validity. | no |
+| `agentunison uninstall` | Remove every ledgered managed path (land-before-delete reversed: restore quarantine → remove shims/links/copies/blocks → remove ledger). `--keep-canonical` is implicit: canonical content is never removed. | yes |
 
 Global flags: `--json`, `--cwd <path>`, `--yes` (accept `safe` without prompt; never
 implies approvals), `--no-color`, `--verbose`. Interactive prompts only when stdin is a
@@ -33,17 +33,17 @@ TTY; otherwise the command prints the pending approvals and exits with a non-zer
 | MODIFY | change a user-owned file in a bounded way (managed block insert/repair; adopted content appended under a marked heading) — shown as a diff | review |
 | MOVE | relocate content (e.g. `CLAUDE.md` → `AGENTS.md`, `.claude/skills/x` → `.agents/skills/x`); copy → verify → remove source; `git mv` when tracked | review |
 | ADOPT | take a legacy item into canonical form (command → skill) | review |
-| QUARANTINE | move a duplicate/conflicting path into `.agentconcord/quarantine/<ts>/` | review |
+| QUARANTINE | move a duplicate/conflicting path into `.agentunison/quarantine/<ts>/` | review |
 | DEPRECATE | mark in the audit + ledger; no file change (e.g. `.cursorrules` when `AGENTS.md` covers it) | safe |
 | DELETE | remove a path permanently | destructive (`--approve` + `--allow-delete`) |
 
-Approvals are recorded in `agentconcord.yaml` under `decisions:` so a later `plan` does
+Approvals are recorded in `agentunison.yaml` under `decisions:` so a later `plan` does
 not re-ask; declining is recorded too (`preserve`).
 
-## 2. Manifest — `agentconcord.yaml` (intent; human-edited; small)
+## 2. Manifest — `agentunison.yaml` (intent; human-edited; small)
 
 ```yaml
-# agentconcord.yaml — intent. Edit freely; run `agentconcord plan` to see the effect.
+# agentunison.yaml — intent. Edit freely; run `agentunison plan` to see the effect.
 version: 1
 targets: [claude, codex, opencode]          # harnesses this repo is used with
 canonical:
@@ -73,11 +73,11 @@ Rules: unknown keys are an error (strict schema); comments and key order are pre
 on rewrite (YAML document editing, never object round-trip); the file never contains
 machine state (hashes, timestamps) so diffs stay meaningful.
 
-## 3. Ledger — `.agentconcord/state.yaml` (machine-owned; committed)
+## 3. Ledger — `.agentunison/state.yaml` (machine-owned; committed)
 
 ```yaml
 version: 1
-tool: agentconcord@0.1.0
+tool: agentunison@0.1.0
 platformAtApply: { os: darwin, symlinks: true }
 managed:
   - path: CLAUDE.md
@@ -104,11 +104,11 @@ managed:
     sha256: 1c…
 blocks:
   - file: AGENTS.md
-    marker: agentconcord
+    marker: agentunison
     sha256: 77…
 quarantine:
   - from: .claude/skills/deploy
-    to: .agentconcord/quarantine/2026-09-04T10-11-12Z/.claude/skills/deploy
+    to: .agentunison/quarantine/2026-09-04T10-11-12Z/.claude/skills/deploy
     reason: duplicate-of-canonical
 ```
 
@@ -138,8 +138,8 @@ Exit codes: 0 ok · 1 usage/config error · 2 audit findings · 3 plan has pendi
 - Manifest: add `id:` (random, generated once; nonce for the managed block); remove
   `policy.budgets`. `decisions:` entries are approvals honored by `apply` (shown as
   pre-approved in `plan`); ids are `<op>:<path>` or `merge:<file>:<sha8>`. Block style forced.
-- Ledger renamed `.agentconcord/ledger.yaml`; contains no `tool`, `platformAtApply`,
+- Ledger renamed `.agentunison/ledger.yaml`; contains no `tool`, `platformAtApply`,
   `quarantine`, or timestamps other than none — sorted by codepoint, deterministic. Local state
-  in `.agentconcord/local/{state.yaml,journal/,quarantine/,verify/}`.
+  in `.agentunison/local/{state.yaml,journal/,quarantine/,verify/}`.
 - Hashes are computed after LF normalization; tree hashes are content-only, codepoint-sorted,
   excluding `.DS_Store`/`Thumbs.db`.

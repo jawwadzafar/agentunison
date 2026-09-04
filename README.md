@@ -1,11 +1,11 @@
-# AgentConcord
+# AgentUnison
 
 **Make every coding agent agree on your repository.**
 
 One repository is worked on by many coding agents — Claude Code, Codex, OpenCode, Copilot,
 Cursor, Gemini CLI — and each one grew its own instruction system: `CLAUDE.md`, `AGENTS.md`,
 `GEMINI.md`, `.claude/skills`, `.agents/skills`, `.claude/commands`, per-tool agents, settings.
-They start as copies and end as forks. AgentConcord inspects what is there, audits it,
+They start as copies and end as forks. AgentUnison inspects what is there, audits it,
 converges it to one canonical architecture without destroying anything, projects it into the
 form each harness actually reads, verifies real harness behavior, and keeps it from drifting.
 
@@ -20,14 +20,14 @@ per harness and platform from a versioned, evidence-tagged capability matrix.
 
 ```bash
 cd your-repo
-npx agentconcord init            # fresh repo: done in one step
+npx agentunison init            # fresh repo: done in one step
                                  # existing setup: audit + plan printed; safe actions applied;
                                  # changes to existing files wait for --approve
-npx agentconcord apply --approve all     # or --approve "MOVE:.agents/skills/x,QUARANTINE:…"
-npx agentconcord verify --live           # structural check + real probes of installed harnesses
+npx agentunison apply --approve all     # or --approve "MOVE:.agents/skills/x,QUARANTINE:…"
+npx agentunison verify --live           # structural check + real probes of installed harnesses
 ```
 
-Add `agentconcord verify` to CI. It exits non-zero on drift.
+Add `agentunison verify` to CI. It exits non-zero on drift.
 
 ## What you get
 
@@ -38,15 +38,15 @@ Add `agentconcord verify` to CI. It exits non-zero on drift.
 | `CLAUDE.md` | a pinned 3-line shim (`@AGENTS.md` + note). Claude-only text can live in a marked harness-specific section |
 | `.claude/skills` | links to the canonical skills (whole-dir link when empty, per-skill links otherwise, managed copies where symlinks are unavailable) |
 | `.claude/agents`, `.codex/`, `.opencode/agents`, settings, hooks, rules | **preserved**: inventoried and audited, never converged |
-| `agentconcord.yaml` | intent: targets, canonical paths, policy, recorded approvals |
-| `.agentconcord/ledger.yaml` | committed ownership ledger: every managed path, mechanism, hash/target |
-| `.agentconcord/local/` | machine-local (self-ignored): platform probe, fallbacks used, write-ahead journal, quarantine |
+| `agentunison.yaml` | intent: targets, canonical paths, policy, recorded approvals |
+| `.agentunison/ledger.yaml` | committed ownership ledger: every managed path, mechanism, hash/target |
+| `.agentunison/local/` | machine-local (self-ignored): platform probe, fallbacks used, write-ahead journal, quarantine |
 
 ## Safety model
 
 - **Plan first.** Every action carries preconditions (hashes, path types) captured at plan time;
   `apply` re-checks all of them before writing anything and refuses the whole run on a mismatch.
-- **Never destroy.** Displaced content is quarantined under `.agentconcord/local/quarantine/<ts>/`
+- **Never destroy.** Displaced content is quarantined under `.agentunison/local/quarantine/<ts>/`
   with a manifest. `DELETE` never appears in a plan unless you ask (`--allow-delete`).
 - **Own only what you create.** The ledger is the boundary. Foreign files (other tools' markers,
   plugin caches, vendored skill trees) are listed and left alone.
@@ -89,6 +89,8 @@ macOS; Copilot/Cursor/Gemini have matrix entries and structural projections (Gem
 Windows paths (junction/copy fallbacks, CRLF hashing) are implemented and exercised through
 policy overrides in tests; native Windows CI runs in GitHub Actions.
 
+Working on it: `docs/TASKS.md` (task board: goal → steps → acceptance → validate → verify),
+`docs/VERIFICATION.md` (every claim → command → expected result), `CONTRIBUTING.md`.
 Design records: `dev_docs/2026-09-04/` (research with sources and revisions, architecture,
 CLI/YAML design, migration safety, validation strategy, independent design review).
 

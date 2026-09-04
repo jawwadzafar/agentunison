@@ -79,7 +79,7 @@ export function writeFileSafe(absPath: string, content: string): void {
   if (t === 'symlink') throw new Error(`refusing to write through symlink: ${absPath}`);
   if (t === 'dir') throw new Error(`refusing to write over directory: ${absPath}`);
   fs.mkdirSync(path.dirname(absPath), { recursive: true });
-  const tmp = `${absPath}.agentconcord-tmp-${process.pid}`;
+  const tmp = `${absPath}.agentunison-tmp-${process.pid}`;
   fs.writeFileSync(tmp, content, 'utf8');
   fs.renameSync(tmp, absPath);
 }

@@ -1,10 +1,10 @@
 {
-  "name": "agentconcord",
+  "name": "agentunison",
   "version": "0.1.0",
   "description": "Make every coding agent agree on your repository: inspect, audit, converge, project, verify, and protect the agent harness of a repo across Claude Code, Codex, OpenCode, Copilot, Cursor, and Gemini CLI.",
   "license": "MIT",
   "type": "module",
-  "bin": { "agentconcord": "./bin/agentconcord.js" },
+  "bin": { "agentunison": "./bin/agentunison.js" },
   "main": "./dist/index.js",
   "files": ["bin/", "dist/", "matrix/", "README.md", "LICENSE"],
   "engines": { "node": ">=20.0.0" },
@@ -12,7 +12,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --disable-warning=ExperimentalWarning --test \"test/**/*.test.ts\"",
-    "test:live": "AGENTCONCORD_LIVE=1 node --disable-warning=ExperimentalWarning --test \"test/live/*.test.ts\"",
+    "test:live": "AGENTUNISON_LIVE=1 node --disable-warning=ExperimentalWarning --test \"test/live/*.test.ts\"",
     "dev": "node --disable-warning=ExperimentalWarning src/cli.ts"
   },
   "dependencies": { "yaml": "^2.9.0" },

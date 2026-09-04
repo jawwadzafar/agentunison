@@ -21,12 +21,12 @@ an "Amendments (post-review)" section pointing here; the implementation follows 
 
 | # | Finding | Decision |
 |---|---|---|
-| 3 | Committed ledger records per-machine facts | Split: committed `.agentconcord/ledger.yaml` (path, kind, harness, mechanism class, target/hash) vs gitignored `.agentconcord/local/` (platform, actual mechanism, journal, quarantine, verify logs). `.agentconcord/local/.gitignore` contains `*` (self-ignoring) |
+| 3 | Committed ledger records per-machine facts | Split: committed `.agentunison/ledger.yaml` (path, kind, harness, mechanism class, target/hash) vs gitignored `.agentunison/local/` (platform, actual mechanism, journal, quarantine, verify logs). `.agentunison/local/.gitignore` contains `*` (self-ignoring) |
 | 4 | Refresh clobbers hand-edited managed files | Hash-mismatched managed paths are never touched by `safe` actions. New review actions **REPAIR** (rewrite to expected, diff shown) and **BACKPORT** (copy edited content back to canonical) |
 | 5 | Co-owned directory (foreign manifest/banner) falls through to copy | Foreign manager markers in a target dir ⇒ projection `none` + high-severity finding |
 | 6 | Reversible adoption claimed, not implemented | Claim dropped; `origin` kept as provenance only |
 | 7 | Ledger keyed by path; user renames canonical | `verify` reports "canonical moved/missing" with the suggested ledger fix (distinct message) |
-| 9 | Content-derived nonce churns; tool version/platform in ledger | `id` (random, once, in `agentconcord.yaml`) is the nonce; ledger has no tool version or platform |
+| 9 | Content-derived nonce churns; tool version/platform in ledger | `id` (random, once, in `agentunison.yaml`) is the nonce; ledger has no tool version or platform |
 | 10 | `decisions:` semantics | Recorded decisions **are** approvals for `apply`; `plan` shows them as pre-approved. Ids: `<op>:<path>` and `merge:<file>:<paragraph-sha8>`. `--reconsider` deferred |
 | 11 | YAML flow style / comment relocation | Block style forced; ledger serialized with plain sorted `stringify`; manifest edited via Document API with `lineWidth: 0` |
 | 12 | `policy.budgets` duplicates matrix | Cut |
@@ -38,8 +38,8 @@ an "Amendments (post-review)" section pointing here; the implementation follows 
 | 20 | Case-insensitive filesystems | Inventory via `readdir` exact-name matching; case-variant names produce a finding |
 | 21 | Copilot CLI / Cursor read shims literally | Shim text is harmless when read literally ("If you are reading this line, the instructions are in AGENTS.md"); finding on duplicate-load cost when copilot/cursor are targets |
 | 22 | "identical hash → nothing" is a silent delete | Always quarantine |
-| 23 | `.gitignore` managed block is a MODIFY that non-interactive `init` cannot apply | `.gitignore` block cut; `.agentconcord/local/.gitignore` = `*` |
-| 25 | Probe in `os.tmpdir()` is wrong for bind mounts | Probe inside the repo (`.agentconcord/local/.probe-<pid>`), cleaned up |
+| 23 | `.gitignore` managed block is a MODIFY that non-interactive `init` cannot apply | `.gitignore` block cut; `.agentunison/local/.gitignore` = `*` |
+| 25 | Probe in `os.tmpdir()` is wrong for bind mounts | Probe inside the repo (`.agentunison/local/.probe-<pid>`), cleaned up |
 | 26 | `platforms: [darwin]` starves Linux | Matrix platform key `posix \| win32`; darwin evidence covers posix (fs-level behavior) |
 | 27 | Copy fallback degrades OpenCode/Cursor/Copilot (duplicates) | Plan states the degradation per harness when choosing `copy`; OpenCode dedup probe runs in the live suite on the standard layout |
 | 28 | Copy tree needs a reverse path and a hash definition | BACKPORT (see 4); tree hash = content only, LF-normalized, codepoint-sorted, excluding `.DS_Store`/`Thumbs.db`; exec bits preserved on copy |
@@ -65,7 +65,7 @@ the CLAUDE.md-delta model, and TypeScript/Node.
 
 ## Reviewer's differentiation check (recorded)
 The steady state for Claude/Codex/OpenCode is the Adobe layout that hana and agent-smith
-also reach; AgentConcord's identity lives in the **transition** (audit → plan → exact-match
+also reach; AgentUnison's identity lives in the **transition** (audit → plan → exact-match
 merge with per-block decisions → precondition-checked apply) and **protection** (ledger,
 `verify` in CI, live probes). Consequently structural `verify` is delivered together with
 `apply` (same milestone), and `verify` output quality gets the polish budget.

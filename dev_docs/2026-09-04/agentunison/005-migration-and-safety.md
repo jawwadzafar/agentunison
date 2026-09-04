@@ -37,7 +37,7 @@ without approval. The flow:
 3. **Audit** (rules in 006 §2) → findings with evidence.
 4. **Plan** → actions with risk classes and stable ids (`kind:path[:detail]`).
 5. **Approve** → interactive per group, or `apply --approve`. Decisions persist in
-   `agentconcord.yaml` so re-runs do not re-ask.
+   `agentunison.yaml` so re-runs do not re-ask.
 
 ## 3. Convergence rules per situation
 
@@ -70,7 +70,7 @@ Claude-only fields used, rule text duplicated in `AGENTS.md`.
 
 ## 4. Quarantine
 
-`.agentconcord/quarantine/<UTC timestamp>/<original relative path>`; a `MANIFEST.yaml`
+`.agentunison/quarantine/<UTC timestamp>/<original relative path>`; a `MANIFEST.yaml`
 per timestamp lists `from`, `to`, `reason`, `sha256`. The directory is gitignored via the
 managed `.gitignore` block (the displaced content is in git history when it was tracked;
 quarantine protects untracked/uncommitted content and enables immediate rollback). Never
@@ -78,13 +78,13 @@ auto-purged; `status` shows its size and age.
 
 ## 5. Rollback and uninstall
 
-- `apply` writes a per-run journal (`.agentconcord/journal/<ts>.yaml`, gitignored) with
+- `apply` writes a per-run journal (`.agentunison/journal/<ts>.yaml`, gitignored) with
   each operation and its inverse. On a mid-run failure the journal is replayed in reverse
   (best effort, reported).
 - `uninstall`: restore quarantined items whose destination is free; remove managed
   blocks; remove shims, links, copies, generated adapters that still match their ledger
   hash (changed ones are reported and kept); remove the ledger. Canonical files stay.
-- Anything AgentConcord cannot undo mechanically (a user later edited a moved file) is
+- Anything AgentUnison cannot undo mechanically (a user later edited a moved file) is
   reported with the exact `git` command that restores the pre-migration state.
 
 ## 6. Cross-platform behavior
@@ -102,7 +102,7 @@ auto-purged; `status` shows its size and age.
 
 - `AGENTS.md` managed block states, in ≤ 12 lines, where each asset kind lives and that
   `CLAUDE.md`/`GEMINI.md` are managed shims — read by every agent on every session.
-- Shims carry a one-line "managed by AgentConcord; run `agentconcord plan`" notice.
+- Shims carry a one-line "managed by AgentUnison; run `agentunison plan`" notice.
 - `verify` (CI) fails on: shim content changed outside its harness-specific section, a
   real directory where a ledgered symlink should be, a new skill tree in a native dir
   while a canonical dir exists, duplicate skill names across dirs, a second root
@@ -125,7 +125,7 @@ auto-purged; `status` shows its size and age.
   always quarantined (never "nothing"); foreign manager marker ⇒ projection `none`.
 - Commands → skills: slugify to the spec regex (finding when changed); `a/b.md` → `a-b`;
   CONFLICT rule applies; Claude-only syntax listed in a finding.
-- Quarantine: `.agentconcord/local/quarantine/<UTC ts>/` with a harness-neutral layout (leading
+- Quarantine: `.agentunison/local/quarantine/<UTC ts>/` with a harness-neutral layout (leading
   dot of each segment → `_dot_`) and `MANIFEST.yaml` (from, to, reason, sha256, linkTarget for
   links — links are unlinked, never dereferenced). Not in the committed ledger.
 - Journal is write-ahead: intent (+preconditions) fsynced before each op, done-mark after.

@@ -2,7 +2,7 @@
 
 Evidence classes: **[doc]** official documentation fetched 2026-09-04 · **[bin]** string /
 behavior observed in the installed binary · **[test]** reproduced on a throwaway fixture repo
-on macOS 15 (Darwin 25.6) with the installed versions below. Every fact AgentConcord's
+on macOS 15 (Darwin 25.6) with the installed versions below. Every fact AgentUnison's
 capability matrix relies on must carry one of these, plus the date. Tool behavior drifts;
 re-verify on version change.
 
@@ -61,7 +61,7 @@ re-verify on version change.
 - **Agent Skills** (https://agentskills.io/specification, originated by Anthropic, Apache-2.0 code): required `name` (1–64, `^[a-z0-9]+(-[a-z0-9]+)*$`, equals directory) and `description` (1–1024); optional `license`, `compatibility`, `metadata`, experimental `allowed-tools`; `scripts/`, `references/`, `assets/`; SKILL.md < 500 lines; reference validator `skills-ref validate <dir>` (github.com/agentskills/agentskills/skills-ref).
 - **Subagent definitions:** no standard; three divergent formats (Markdown/Claude, TOML/Codex, Markdown/OpenCode with different fields).
 
-## 6. Consequences for AgentConcord's capability matrix (data, not code)
+## 6. Consequences for AgentUnison's capability matrix (data, not code)
 
 - `instructions.readsAgentsMd`: claude=false (import/symlink), codex=true, opencode=true.
 - `instructions.importSyntax`: claude=`@path`, others none → a CLAUDE.md **shim** is a Claude-only adapter; for Codex/OpenCode `AGENTS.md` must be the real file (or a symlink they follow).

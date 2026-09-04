@@ -48,7 +48,7 @@ export function withManifest(root: string, targets: HarnessId[] = ['claude', 'co
   extra(m);
   let text = renderManifest(m);
   if (m.policy.symlinks !== 'auto') text = text.replace(/symlinks: auto/, `symlinks: ${m.policy.symlinks}`);
-  fs.writeFileSync(path.join(root, 'agentconcord.yaml'), text);
+  fs.writeFileSync(path.join(root, 'agentunison.yaml'), text);
   return buildCtx(root);
 }
 
@@ -62,7 +62,7 @@ export function applyAll(root: string, approve: 'all' | string[] = 'all'): Retur
   const { ctx, plan } = planFor(root);
   const res = applyPlan(ctx, plan, { approve: approve === 'all' ? 'all' : new Set(approve), allowDelete: false, now: () => '2026-09-04T00:00:00.000Z' });
   // mirror cmdApply: persist approvals as decisions
-  if (!res.refused && ctx.manifest && exists(root, 'agentconcord.yaml')) {
+  if (!res.refused && ctx.manifest && exists(root, 'agentunison.yaml')) {
     const decisions = { ...ctx.manifest.decisions };
     for (const a of res.executed) if (a.risk !== 'safe') decisions[a.id] = 'approve';
     if (Object.keys(decisions).length !== Object.keys(ctx.manifest.decisions).length) saveManifestDecisions(root, decisions);
@@ -83,7 +83,7 @@ export function treeHash(root: string): string {
     for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
       const p = path.join(dir, e.name);
       const rel = path.relative(root, p);
-      if (rel === '.git' || rel.startsWith(`.agentconcord${path.sep}local${path.sep}journal`)) continue;
+      if (rel === '.git' || rel.startsWith(`.agentunison${path.sep}local${path.sep}journal`)) continue;
       if (e.isSymbolicLink()) out.push(`${rel} -> ${fs.readlinkSync(p)}`);
       else if (e.isDirectory()) { out.push(`${rel}/`); visit(p); }
       else out.push(`${rel} ${fs.readFileSync(p, 'utf8')}`);

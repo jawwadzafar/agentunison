@@ -4,18 +4,18 @@
 
 ## Context
 
-AgentConcord is a repository-scoped CLI that must: run wherever coding-agent harnesses
+AgentUnison is a repository-scoped CLI that must: run wherever coding-agent harnesses
 run (macOS, Linux, Windows); create relative symlinks and junctions and detect when they
 are unavailable; read/write YAML preserving comments; parse Markdown frontmatter, TOML
 (Codex agents/config, read-only in v1) and JSON; spawn harness binaries with timeouts;
-ship as a single easy install (`npx agentconcord init` is the target experience); and be
+ship as a single easy install (`npx agentunison init` is the target experience); and be
 testable with fixtures, including idempotency and tamper tests.
 
 Candidates evaluated against those needs (research in `dev_docs/2026-09-04/research/`):
 
 | Criterion | TypeScript / Node | Go | Rust |
 |---|---|---|---|
-| Install experience for this audience | `npx agentconcord` works on every machine that runs Codex (npm), Copilot CLI (npm), Gemini CLI (npm), Claude Code (npm/native); no extra runtime to explain | single static binary; needs a download/brew/`go install` step; no `npx`-style zero-install | same as Go |
+| Install experience for this audience | `npx agentunison` works on every machine that runs Codex (npm), Copilot CLI (npm), Gemini CLI (npm), Claude Code (npm/native); no extra runtime to explain | single static binary; needs a download/brew/`go install` step; no `npx`-style zero-install | same as Go |
 | Cross-platform symlinks | `fs.symlink(target, path, 'junction'|'dir'|'file')`, `lstat`, `readlink`, `realpath` — all built in; Windows junction type explicit | excellent (`os.Symlink`, Windows needs privilege or junction via syscall) | excellent |
 | YAML with comment preservation | `yaml` package: Document API edits in place, keeps comments/order (FleetSmith's `patch` proves it) | `gopkg.in/yaml.v3` node API works but is clumsy for round-trips | `serde_yaml` drops comments; alternatives immature |
 | Filesystem safety / atomic writes | temp + rename via `fs.promises`; adequate | strong | strong |
@@ -42,7 +42,7 @@ namespaces, or parameter properties) so that:
 
 ## Consequences
 
-- `npx agentconcord init` is the one-command experience; `npm i -g agentconcord` for daily use.
+- `npx agentunison init` is the one-command experience; `npm i -g agentunison` for daily use.
 - Windows support is implemented in code (junction/copy fallbacks) and tested through
   policy overrides and probe simulation; native Windows CI is a follow-up.
 - Performance is not a concern at this scale (thousands of files, not millions).
@@ -50,7 +50,7 @@ namespaces, or parameter properties) so that:
   Rust (same, plus comment-preserving YAML immaturity). Both remain viable if the tool
   ever needs to be embedded in environments without Node.
 
-## Amendments (post-review, see dev_docs/2026-09-04/agentconcord/008)
+## Amendments (post-review, see dev_docs/2026-09-04/agentunison/008)
 - Type-stripping constraints made explicit: relative imports carry `.ts` extensions in source;
   `tsconfig` sets `allowImportingTsExtensions`, `rewriteRelativeImportExtensions` (TS ≥ 5.7),
   `erasableSyntaxOnly` (TS ≥ 5.8), `verbatimModuleSyntax`; tests run with

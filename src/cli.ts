@@ -3,19 +3,19 @@ import type { HarnessId } from './model/types.ts';
 import { HARNESS_IDS } from './model/types.ts';
 import { buildCtx, cmdApply, cmdAudit, cmdDoctor, cmdInit, cmdInspect, cmdPlan, cmdUninstall, cmdVerify, type CommandIO } from './commands/index.ts';
 
-const HELP = `agentconcord — make every coding agent agree on your repository
+const HELP = `agentunison — make every coding agent agree on your repository
 
-Usage: agentconcord <command> [options]
+Usage: agentunison <command> [options]
 
 Commands
-  init        Detect harnesses, write agentconcord.yaml, converge safely (plans first; approvals for changes to existing files)
+  init        Detect harnesses, write agentunison.yaml, converge safely (plans first; approvals for changes to existing files)
   inspect     Inventory of every harness surface, classified with evidence
   audit       Findings: duplicates, conflicts, legacy surfaces, budgets, spec violations (exit 2 when any medium/high)
   plan        The dry run: every action with risk class, reason, evidence; nothing is written (exit 2 when actions are pending)
   apply       Execute the plan. Safe actions always; --approve "<id>,…"|all for review actions; DELETE also needs --allow-delete
   verify      Structural check of ledger + invariants (exit 4 on failure); --live probes installed harnesses
   doctor      Environment: installed harnesses/versions vs the verified matrix, platform symlink probe, manifest state
-  uninstall   Leave every harness working, remove what AgentConcord manages (canonical content is never removed)
+  uninstall   Leave every harness working, remove what AgentUnison manages (canonical content is never removed)
 
 Options
   --cwd <path>            repository (default: cwd; the git root is used)
@@ -84,6 +84,6 @@ export async function main(argv: string[]): Promise<number> {
   }
 }
 
-// Direct execution: `node src/cli.ts …` (dev) or via bin/agentconcord.js (dist).
+// Direct execution: `node src/cli.ts …` (dev) or via bin/agentunison.js (dist).
 const invokedDirectly = process.argv[1] && /[\\/]cli\.(ts|js)$/.test(process.argv[1]);
 if (invokedDirectly) main(process.argv.slice(2)).then((code) => { process.exitCode = code; });

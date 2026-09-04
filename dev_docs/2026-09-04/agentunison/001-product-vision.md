@@ -1,4 +1,4 @@
-# 001 — Product vision: AgentConcord
+# 001 — Product vision: AgentUnison
 
 *"Make every coding agent agree on your repository."*
 
@@ -19,7 +19,7 @@ be, converges to it without destroying anything, projects it into each harness i
 form that harness actually reads, verifies real behavior, and keeps it from drifting.**
 That whole loop is the product.
 
-## What AgentConcord is
+## What AgentUnison is
 
 A repository-scoped CLI. One command against an existing repo runs:
 
@@ -60,18 +60,18 @@ inspect → inventory → understand → classify → propose → plan (dry run)
 
 ## Users and journeys
 
-1. **Fresh repository.** `agentconcord init` → detects/asks which harnesses are used,
+1. **Fresh repository.** `agentunison init` → detects/asks which harnesses are used,
    writes a short `AGENTS.md` skeleton, `.agents/skills/` (empty), the harness shims and
    discovery links the matrix says are needed, a manifest and ledger, and a `verify`
    hook for CI. Two minutes, nothing to learn.
-2. **Mature messy repository** (the important one). `agentconcord init` (or `audit` →
+2. **Mature messy repository** (the important one). `agentunison init` (or `audit` →
    `plan` → `apply`) → truthful inventory with evidence, findings (duplicates with
    similarity %, stale references, oversize always-loaded files, non-portable frontmatter,
    overlapping agents), a plan listing every action with risk class, approvals for
    MOVE/MODIFY/QUARANTINE, never an unrequested DELETE, then apply + verify + status.
-3. **Ongoing.** `agentconcord verify` in CI and locally; `status` shows drift in one
+3. **Ongoing.** `agentunison verify` in CI and locally; `status` shows drift in one
    screen; `plan` after adding a skill shows exactly what will change; `uninstall`
-   removes only what the ledger says AgentConcord created.
+   removes only what the ledger says AgentUnison created.
 
 ## Principles (ranked)
 

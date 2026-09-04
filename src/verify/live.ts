@@ -40,7 +40,7 @@ function canonicalSkillNames(ctx: Ctx): string[] {
 export function verifyLive(ctx: Ctx, opts: { allowApiCalls: boolean; harnesses?: HarnessId[] }): LiveResult[] {
   const results: LiveResult[] = [];
   const targets = opts.harnesses ?? ctx.manifest?.targets ?? [];
-  const nonce = ctx.manifest ? `agentconcord: ${ctx.manifest.id}` : undefined;
+  const nonce = ctx.manifest ? `agentunison: ${ctx.manifest.id}` : undefined;
   const skills = canonicalSkillNames(ctx);
   ensureLocalDir(ctx.root);
   const logDir = path.join(ctx.root, LOCAL_DIR, 'verify');
@@ -57,7 +57,7 @@ export function verifyLive(ctx: Ctx, opts: { allowApiCalls: boolean; harnesses?:
     try {
       switch (live.kind) {
         case 'codex-prompt-input': {
-          const r = run(hm.detect.binaries[0]!, ['debug', 'prompt-input', 'agentconcord verify'], ctx.root, timeout);
+          const r = run(hm.detect.binaries[0]!, ['debug', 'prompt-input', 'agentunison verify'], ctx.root, timeout);
           log(h, r.out + '\n' + r.err);
           if (r.timedOut) { results.push({ harness: h, status: 'failed', detail: 'timed out' }); break; }
           if (!r.ok) { results.push({ harness: h, status: 'failed', detail: `exit ${r.err.split('\n')[0]?.slice(0, 200)}` }); break; }

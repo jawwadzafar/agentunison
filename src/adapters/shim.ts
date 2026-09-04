@@ -6,10 +6,10 @@ import { sha256Text } from '../util/hash.ts';
  * markers is user-owned and excluded from the hash.
  */
 
-export const BEGIN = (id: string) => `<!-- agentconcord:begin id=${id} -->`;
-export const END = '<!-- agentconcord:end -->';
-export const HS_BEGIN = '<!-- agentconcord:harness-specific:begin -->';
-export const HS_END = '<!-- agentconcord:harness-specific:end -->';
+export const BEGIN = (id: string) => `<!-- agentunison:begin id=${id} -->`;
+export const END = '<!-- agentunison:end -->';
+export const HS_BEGIN = '<!-- agentunison:harness-specific:begin -->';
+export const HS_END = '<!-- agentunison:harness-specific:end -->';
 
 export interface ShimSpec {
   harness: string;          // display name for the note
@@ -24,7 +24,7 @@ export function renderShim(spec: ShimSpec, harnessSpecific?: string): string {
     '',
     BEGIN(spec.id),
     `If you are reading this line, the repository instructions are in ${spec.canonical} (imported above).`,
-    `This file is a compatibility shim for ${spec.harness}, managed by AgentConcord — do not add instructions here; edit ${spec.canonical} or run \`agentconcord plan\`.`,
+    `This file is a compatibility shim for ${spec.harness}, managed by AgentUnison — do not add instructions here; edit ${spec.canonical} or run \`agentunison plan\`.`,
     END,
     '',
   ].join('\n');
@@ -48,7 +48,7 @@ export function parseShim(text: string): ParsedShim {
   const lines = lf.split('\n');
   const first = lines.find((l) => l.trim() !== '');
   const isImport = !!first && /^@\S+$/.test(first.trim());
-  const beginIdx = lines.findIndex((l) => /^<!-- agentconcord:begin id=[a-f0-9]{8} -->$/.test(l.trim()));
+  const beginIdx = lines.findIndex((l) => /^<!-- agentunison:begin id=[a-f0-9]{8} -->$/.test(l.trim()));
   const endIdx = lines.findIndex((l) => l.trim() === END);
   const hsB = lines.findIndex((l) => l.trim() === HS_BEGIN);
   const hsE = lines.findIndex((l) => l.trim() === HS_END);
@@ -87,12 +87,12 @@ export function renderAgentsBlock(opts: { id: string; canonicalInstructions: str
   const claude = opts.claudeSkillsLink ? ` Claude Code reads them through \`.claude/skills\` links — do not create skills there.` : '';
   return [
     BEGIN(opts.id),
-    '## Agent assets (managed by AgentConcord)',
+    '## Agent assets (managed by AgentUnison)',
     `- Repository instructions: this file (\`${opts.canonicalInstructions}\`) is the only always-loaded instruction file. ${shimNote}`,
     `- Skills: \`${opts.canonicalSkills}/<name>/SKILL.md\` (Agent Skills spec: \`name\` = directory, precise \`description\`).${claude}`,
     '- Harness-native config (subagents, settings, hooks, rules) stays in each tool\'s own directory; it is inventoried, never converged.',
-    '- Check the layout with `agentconcord verify`; change it by editing `agentconcord.yaml` and running `agentconcord plan`.',
-    `agentconcord: ${opts.id}`,
+    '- Check the layout with `agentunison verify`; change it by editing `agentunison.yaml` and running `agentunison plan`.',
+    `agentunison: ${opts.id}`,
     END,
   ].join('\n');
 }
@@ -102,7 +102,7 @@ export interface BlockLocation { start: number; end: number; text: string }
 /** Find the managed block in a file; returns undefined when absent, `damaged` when markers are inconsistent. */
 export function findBlock(text: string): BlockLocation | 'damaged' | undefined {
   const lf = text.replace(/\r\n/g, '\n');
-  const begins = [...lf.matchAll(/<!-- agentconcord:begin id=[a-f0-9]{8} -->/g)];
+  const begins = [...lf.matchAll(/<!-- agentunison:begin id=[a-f0-9]{8} -->/g)];
   const ends = [...lf.matchAll(new RegExp(END.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'), 'g'))];
   if (begins.length === 0 && ends.length === 0) return undefined;
   if (begins.length !== 1 || ends.length !== 1) return 'damaged';

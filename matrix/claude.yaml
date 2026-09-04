@@ -1,5 +1,5 @@
 # Capability matrix — Claude Code. Every fact carries evidence (doc|bin|test), the date it was
-# checked, and the versions/platforms it was verified on. Unknown ⇒ AgentConcord takes the
+# checked, and the versions/platforms it was verified on. Unknown ⇒ AgentUnison takes the
 # conservative branch. Sources: research/harness-docs-claude-codex-opencode.md
 harness: claude
 displayName: Claude Code

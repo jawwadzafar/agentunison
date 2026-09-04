@@ -1,4 +1,4 @@
-# Project comparison — prior art for AgentConcord (2026-09-04)
+# Project comparison — prior art for AgentUnison (2026-09-04)
 
 Detailed per-project reports (with file:line evidence) live beside this file:
 `fleetsmith.md`, `sync-tools.md`, `agent-collections.md`,
@@ -20,14 +20,14 @@ Revisions are in `SOURCE-LINKS.md`. This file is the synthesis.
 | **agents-skills-sync** (Deno/TS, MIT, v0.5.1) | Push central content into projects via symlinks on a cron tick | Five-way target classifier (`missing/own-link/foreign-link/real-file/real-dir`); **quarantine-never-delete** with TTL; strict managed `.gitignore` block + repair; per-file SHA-256 drift map; `--check` exit taxonomy; dry-run vocabulary; declarative multi-rooted tool profiles; escaping-symlink rejection; hermetic integration tests | Remote/cron/PAT model; absolute links into `~/.config` cache; read-only chmod; content-blind; gitignore-everything; macOS/Linux only | engine + profiles + registry | remote content repo | quarantine on collision | absolute into staging | structural + exit codes | Classifier; quarantine; managed block; hash map; exit taxonomy; profile shape | Distribution model; absolute links; content-blind | Our truth lives in the repo and is committed |
 | **Adobe harness guide** (docs + prompt skills, Apache-2.0, v1.1.0 2026-08-05) | Prescriptive harness: `AGENTS.md` + `INVARIANTS.md` + `.agents/skills`; `CLAUDE.md` 3-line `@` shim; `.claude/skills/<n>` relative symlinks | Excellent audit checklists (10-question health check, 8-section audit, before/after probe); "pointers, never content"; line/token budgets; `Enforced by:` annotations; honest Windows caveat | Delete-only stance on Cursor/Copilot native files; symlink-only; LLM-prompt-executed checks; no dry-run/manifest; 16 tool claims unverified by the guide itself | prose + templates | `AGENTS.md`, `INVARIANTS.md`, `.agents/skills` | migrate then delete originals | relative symlinks, no fallback | prompt-based | Audit checklists → deterministic lints; shim form; budgets; enforced-by annotations; before/after probe as optional live check | Deleting native files; symlink-only; prompt-only validation | Native-only content has legitimate value; deletion must be a choice |
 
-## Synthesis — what nobody does, and what AgentConcord must do
+## Synthesis — what nobody does, and what AgentUnison must do
 
 1. **Inspect → understand → converge → project → verify → protect in one deterministic tool.** Every project does one or two steps: FleetSmith compiles, linkers link, agentsync copies, Adobe prescribes. None inventories an existing repo's harness and plans a safe convergence.
 2. **Manifest + symlinks together.** Linkers (hana, sync-skills, agent-sync, agents-skills-sync) have no committed ownership record; the one tool with a manifest (agentsync) copies. Ownership must be recorded so that "missing" can be told apart from "intentionally absent", uninstall can be exact, and foreign files are never touched.
-3. **`CLAUDE.md = canonical + delta`.** Nobody models it. hana links unconditionally; agent-sync copies N times; Adobe/agent-smith shim only. AgentConcord must audit the delta and let the user choose adopt-into-canonical vs keep-as-harness-specific.
+3. **`CLAUDE.md = canonical + delta`.** Nobody models it. hana links unconditionally; agent-sync copies N times; Adobe/agent-smith shim only. AgentUnison must audit the delta and let the user choose adopt-into-canonical vs keep-as-harness-specific.
 4. **Version-sensitive capability matrix backed by tests against real binaries.** Every tool learned harness facts by hand (Codex ignores `.claude/skills`; Codex agents need registration; junction semantics; restart-to-rescan). Two independent tools converged on the same frontmatter-portability field list. The matrix must be data (YAML) with evidence + date, and the verify step must run the real CLIs where installed.
 5. **Loud fallback ladders, never silent copies.** agent-smith's ladder vs agent-sync's silent fallback is the single most instructive contrast.
-6. **Quarantine, never delete by default.** agents-skills-sync's model, in-repo (`.agentconcord/quarantine/<ts>/`), listed in the plan, reversible.
+6. **Quarantine, never delete by default.** agents-skills-sync's model, in-repo (`.agentunison/quarantine/<ts>/`), listed in the plan, reversible.
 7. **Fewer, domain-shaped assets.** wshobson's 202 agents (≈70% generic) is the counterexample; Adobe's "skills per recurring task type only" and agentsync's ≤80-line grounded repo skill are the right size.
 
 ## Cross-cutting facts that constrain the design (from the harness research)

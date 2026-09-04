@@ -109,7 +109,7 @@ test('journal is write-ahead: intent recorded before each op, done after', () =>
   write(r, '.claude/skills/only/SKILL.md', skill('only'));
   withManifest(r, ['claude']);
   applyAll(r);
-  const jdir = path.join(r, '.agentconcord/local/journal');
+  const jdir = path.join(r, '.agentunison/local/journal');
   const files = fs.readdirSync(jdir);
   assert.equal(files.length, 1);
   const j = fs.readFileSync(path.join(jdir, files[0]!), 'utf8');
@@ -141,6 +141,6 @@ test('rollback: a failure mid-apply reverses completed operations (fault injecti
   assert.equal(res.executed.length, 0);
   assert.equal(read(r, 'CLAUDE.md'), before.claude, 'CLAUDE.md restored');
   assert.equal(exists(r, '.claude/skills/only/SKILL.md'), before.hasSkill, 'moved skill restored to its origin');
-  assert.ok(!exists(r, '.agentconcord/ledger.yaml'), 'ledger not written');
+  assert.ok(!exists(r, '.agentunison/ledger.yaml'), 'ledger not written');
   assert.ok(!exists(r, '.claude/skills/evil'));
 });

@@ -1,8 +1,8 @@
-# FleetSmith deep-study (reference for AgentConcord)
+# FleetSmith deep-study (reference for AgentUnison)
 
 Date: 2026-09-04. Subject: local checkout `/Users/jawwadzafar/repo/subhranshu/fleetsmith` (read-only; the CLI and tests were exercised from a copy in the session scratchpad because the checkout has no `node_modules`).
 
-**Purpose.** FleetSmith is studied as a *reference for product ideas* (bootstrap UX, spec-to-files compilation, plan/apply safety, per-harness adapters, capability mapping, QA battery, packaging) — not as a codebase to copy. AgentConcord's problem is different: *inspect an existing repo's harness setup, converge it to one canonical architecture, project it natively into each harness, validate real behaviour, prevent drift.* FleetSmith generates a **new** multi-agent "fleet" from a spec; it does not read or adopt existing harness files (see §5). That gap is the most important finding.
+**Purpose.** FleetSmith is studied as a *reference for product ideas* (bootstrap UX, spec-to-files compilation, plan/apply safety, per-harness adapters, capability mapping, QA battery, packaging) — not as a codebase to copy. AgentUnison's problem is different: *inspect an existing repo's harness setup, converge it to one canonical architecture, project it natively into each harness, validate real behaviour, prevent drift.* FleetSmith generates a **new** multi-agent "fleet" from a spec; it does not read or adopt existing harness files (see §5). That gap is the most important finding.
 
 All citations are `path:line` in the fleetsmith checkout unless stated otherwise.
 
@@ -198,7 +198,7 @@ The handoff graph is compiled into `permission.task` and skill attachments into 
 | `hidden` | no-op | native | no-op |
 | MCP servers | **not emitted** (see below) | `opencode.json.mcp` (`opencode.js:204-213`) | **not emitted** |
 
-**Doc/code drift found:** `docs/spec.md:29` and `schema.js:213-217` state `fleet.mcp` "compiles to `.mcp.json` (Claude Code), `opencode.json` `mcp`, and goose recipe `extensions`", but `grep -rn "fleet\.mcp" src` hits only `src/adapters/opencode.js:204-206`. The Claude Code and goose adapters silently ignore `mcp`. A lesson for AgentConcord: every "we project X into harness Y" claim needs a compile-check test per target.
+**Doc/code drift found:** `docs/spec.md:29` and `schema.js:213-217` state `fleet.mcp` "compiles to `.mcp.json` (Claude Code), `opencode.json` `mcp`, and goose recipe `extensions`", but `grep -rn "fleet\.mcp" src` hits only `src/adapters/opencode.js:204-206`. The Claude Code and goose adapters silently ignore `mcp`. A lesson for AgentUnison: every "we project X into harness Y" claim needs a compile-check test per target.
 
 ---
 
@@ -212,7 +212,7 @@ The handoff graph is compiled into `permission.task` and skill attachments into 
 - **No "adopt existing files" logic.** The nearest things: (a) `qa --installed` reads `./.claude/{skills,agents}` and `~/.claude/{skills,agents}` frontmatter to detect *rival* skills (same vocabulary, different name) and *shadowed* copies (same name, other scope) — a real, well-motivated ambient-hygiene check (`src/qa/installed.js:14-43`, `:83-115`, `:128-224`); (b) `install --scope user` deliberately *skips* shared singletons (`CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`, `opencode.json`, `.claude/loop.md`, `_fleet/`, `.agents/checks/`) so it never clobbers user-global config (`src/install.js:33-62`); (c) `detectTools` probes `~/.claude`, `~/.config/opencode`, `~/.config/goose` or PATH binaries, purely informational (`install.js:100-115`).
 - The opencode plugin adds an `autobuild` hook (`file.edited` on `fleet.yaml` → rebuild) — opt-in via `FLEETSMITH_OPENCODE_AUTOBUILD=1` (README §"Use fleetsmith inside opencode"; test `fleetsmith.test.js:1390`).
 
-Conclusion for AgentConcord: FleetSmith is a *greenfield generator*; the inspect/understand/converge half of AgentConcord's problem has no counterpart here except the ambient-install scanner and the LLM reconnaissance checklist.
+Conclusion for AgentUnison: FleetSmith is a *greenfield generator*; the inspect/understand/converge half of AgentUnison's problem has no counterpart here except the ambient-install scanner and the LLM reconnaissance checklist.
 
 ---
 
@@ -276,7 +276,7 @@ Conclusion for AgentConcord: FleetSmith is a *greenfield generator*; the inspect
 
 **Lessons recorded in their own postmortem** (`CHANGELOG.md` §0.7.1; `scripts/smoke-binary.mjs:3-14`): every v0.7.0 binary was dead on arrival because `createRequire(import.meta.url)` ran on every command and esbuild leaves `import.meta` empty in CJS output; `npm test` exercised the ESM sources and could not see it. Fixes: route all `import.meta` through one `MODULE_URL` null-able constant (`cli.js:98-113`), make esbuild's `empty-import-meta` warning a build **error** (`bundle.mjs:32-35`), always re-bundle (`build-binary.mjs:60-69`), and **run the built artifact** (`version`, `patterns`, a real `init → validate → build --target all` in a temp dir, non-zero exit on unknown command) before attaching it to a release (`smoke-binary.mjs:64-117`). Also `publish-check.mjs` verifies tarball contents and licence boundaries without publishing.
 
-Takeaways for AgentConcord: one runtime dependency and a pure core make SEA feasible; the artefact you ship must be executed in CI; "zero install" via `npx github:` plus a paste-able bootstrap prompt is a cheap, effective onboarding path; the `install --scope user|project` split with an explicit skip-list and detected-tools banner is a good UX shape.
+Takeaways for AgentUnison: one runtime dependency and a pure core make SEA feasible; the artefact you ship must be executed in CI; "zero install" via `npx github:` plus a paste-able bootstrap prompt is a cheap, effective onboarding path; the `install --scope user|project` split with an explicit skip-list and detected-tools banner is a good UX shape.
 
 ---
 
@@ -294,33 +294,33 @@ Takeaways for AgentConcord: one runtime dependency and a pure core make SEA feas
 
 ### Strong patterns to adopt (adapted, not copied)
 
-1. **Pure compiler → `FileSet` → single writer.** Adapters never touch disk; one `write` implements all safety policy; dry-run and drift detection fall out for free (`fs-utils.js`; `cli.js:838-840` keeps I/O in the CLI). AgentConcord should add a *plan* object on top (per-file `create|update|skip|conflict|delete` with reasons) since it must also handle pre-existing files.
+1. **Pure compiler → `FileSet` → single writer.** Adapters never touch disk; one `write` implements all safety policy; dry-run and drift detection fall out for free (`fs-utils.js`; `cli.js:838-840` keeps I/O in the CLI). AgentUnison should add a *plan* object on top (per-file `create|update|skip|conflict|delete` with reasons) since it must also handle pre-existing files.
 2. **Refuse-by-default on divergent existing files, skip identical, explicit `--force`, plus a "preserve/seed-once" class** (`fs-utils.js:37-59`). Extend with managed blocks / three-way merge for user-owned files like `CLAUDE.md`.
-3. **Capabilities, not tool names, with per-harness maps and documented degradation** (`claude-code.js:20-26`, `opencode.js:129-146`, `goose.js:47-51`). The commentary style — each mapping records the *observed* platform quirk (`Edit(path)` vs `Write(path)`, `subagent_depth`, `summon` re-injection, goose parallelism only in the prompt) — is exactly the knowledge base AgentConcord needs per harness.
+3. **Capabilities, not tool names, with per-harness maps and documented degradation** (`claude-code.js:20-26`, `opencode.js:129-146`, `goose.js:47-51`). The commentary style — each mapping records the *observed* platform quirk (`Edit(path)` vs `Write(path)`, `subagent_depth`, `summon` re-injection, goose parallelism only in the prompt) — is exactly the knowledge base AgentUnison needs per harness.
 4. **A deterministic, LLM-free QA battery that runs in CI on the repo's own harness**, with checks on *compiled output* rather than the spec, and drift detection with EOL normalisation and tier-aware exemptions (`qa/index.js`). Keep "a judge may advise but never gate" (`qa/index.js:17-21`).
-5. **Ambient-install collision scan** (`qa/installed.js`): reading `./.claude` and `~/.claude` frontmatter, scoring trigger prompts, flagging rivals/shadows with file evidence. This is the seed of AgentConcord's "inspect existing harness" step — generalise to `.codex/`, `.opencode/`, `.goose/`, `.agents/skills`, `AGENTS.md`, `CLAUDE.md`.
-6. **Live-harness execution as an explicit, non-gating, skip-loud measurement** with runner detection, untrusted-workspace detection, timeouts, and a repeat-based noise floor (`eval/exec.js`). AgentConcord's "validate real behaviour" should copy the *posture* (opt-in, skip ≠ pass, report degraded environments) even if the assertions differ.
+5. **Ambient-install collision scan** (`qa/installed.js`): reading `./.claude` and `~/.claude` frontmatter, scoring trigger prompts, flagging rivals/shadows with file evidence. This is the seed of AgentUnison's "inspect existing harness" step — generalise to `.codex/`, `.opencode/`, `.goose/`, `.agents/skills`, `AGENTS.md`, `CLAUDE.md`.
+6. **Live-harness execution as an explicit, non-gating, skip-loud measurement** with runner detection, untrusted-workspace detection, timeouts, and a repeat-based noise floor (`eval/exec.js`). AgentUnison's "validate real behaviour" should copy the *posture* (opt-in, skip ≠ pass, report degraded environments) even if the assertions differ.
 7. **Ship the artefact, then run the artefact** (`smoke-binary.mjs`, `release.yml`), one runtime dependency, SEA binary + `npx github:` + paste-able bootstrap prompt, `install --dry-run`, detected-tools banner, user/project scope with a documented skip-list (`install.js:33-62`).
-8. **Provenance markers in generated frontmatter** (`x-fleetsmith-origin`) and a hard-coded protected-path list that the spec cannot widen (`protected.js:7-15`). For AgentConcord: mark generated files with a stable manager marker and keep the validator/config out of the agent's write reach.
+8. **Provenance markers in generated frontmatter** (`x-fleetsmith-origin`) and a hard-coded protected-path list that the spec cannot widen (`protected.js:7-15`). For AgentUnison: mark generated files with a stable manager marker and keep the validator/config out of the agent's write reach.
 9. **Cache-stability rule**: nothing run-varying in a compiled prompt; live state injected at expansion time via `` !`cmd` `` / `@file` (`agent-prompt.js:10-15`, `claude-code.js:288-321`, `opencode.js:218-249`).
-10. **Path-injection validation for values interpolated into hooks/scripts** (`validate.js:33-49`; `claude-settings.js:92-97`) — AgentConcord will generate hooks too.
+10. **Path-injection validation for values interpolated into hooks/scripts** (`validate.js:33-49`; `claude-settings.js:92-97`) — AgentUnison will generate hooks too.
 11. **Doc discipline**: per-harness format research docs with verification dates (`docs/research/claude-code-formats.md:1-5`) and a `test/eval-fleets` held-out corpus for the compiler itself.
 
 ### Things to explicitly NOT copy (and why)
 
-1. **The fleet/pattern/handover model itself.** Patterns (pipeline/fanout/…), phases, handoff artifacts, ledger, `_fleet/` workspace, SubagentStop handoff gate: these solve *multi-agent orchestration of new work*, not *convergence of an existing harness config*. AgentConcord's canonical model should describe instructions, agents/subagents, skills, commands, hooks, permissions, MCP servers, and ignore/allow rules — the things that already exist in repos — not fleets. Only the *shape* (one spec, N adapters, capability abstraction) transfers.
+1. **The fleet/pattern/handover model itself.** Patterns (pipeline/fanout/…), phases, handoff artifacts, ledger, `_fleet/` workspace, SubagentStop handoff gate: these solve *multi-agent orchestration of new work*, not *convergence of an existing harness config*. AgentUnison's canonical model should describe instructions, agents/subagents, skills, commands, hooks, permissions, MCP servers, and ignore/allow rules — the things that already exist in repos — not fleets. Only the *shape* (one spec, N adapters, capability abstraction) transfers.
 2. **Whole-file ownership of `CLAUDE.md`/`AGENTS.md`** (`claude-code.js:336-347`, `pointers.js:12-33`). Real repos already have these files with human content; refusing/clobbering them is the opposite of "adopt existing". Need managed blocks, `@import`-style includes, or a separate file the pointer links to.
 3. **No manifest / no uninstall / no orphan detection** (§10). A convergence tool must know what it owns to remove or rename safely.
 4. **Ad-hoc arg parsing** (`cli.js:867-886`) — no `--k=v`, no validation of unknown flags (e.g. `--force-preserved` is documented for `build` but `install` also reads it silently). Use a real parser.
 5. **Windows-blind runtime artefacts**: POSIX `sh` hooks and `command -v` probes (`exec.js:71`) with no Windows equivalent (§8).
-6. **Docs that outrun code**: `fleet.mcp` promised for three targets, delivered for one (§4). AgentConcord needs per-target compile tests for every documented projection.
+6. **Docs that outrun code**: `fleet.mcp` promised for three targets, delivered for one (§4). AgentUnison needs per-target compile tests for every documented projection.
 7. **The self-evolution loop, playbooks, health metrics, RelataDB grid** (`src/evolve/`, `src/health/`, `ee/`). Interesting research but orthogonal to harness convergence and heavy (git branch/merge automation, LLM proposers). If anything, borrow only the safety posture (propose-only default, protected referee, deterministic gate).
 8. **Test suite as one 4k-line file** (`test/fleetsmith.test.js`) — hard to navigate; split by module.
 9. **Lexical trigger scoring as "eval"** (`eval/index.js:26-33` admits it is a proxy). Fine as a smell detector; do not present it as behavioural validation.
 
 ### Is the fleet/pattern/handover model relevant to harness convergence at all?
 
-Marginally. The relevant abstraction is *one canonical spec projected by adapters with explicit capability mapping and degradation notes*, plus *drift detection by recompilation*. The fleet-specific concepts (pattern archetypes, phases, handoff files, ledger, SubagentStop handoff gate, workspace tiers) are about running multi-agent jobs and would be noise in a harness-convergence spec. One exception worth keeping in mind: their observation that *hooks are the only deterministic enforcement layer in Claude Code* and that *opencode's permission maps can encode a contract* (`qa/index.js:11-13`, `opencode.js:22-25`) is directly relevant to AgentConcord's "prevent drift / validate real behaviour" — the enforcement primitives per harness are the same even if what they enforce is different.
+Marginally. The relevant abstraction is *one canonical spec projected by adapters with explicit capability mapping and degradation notes*, plus *drift detection by recompilation*. The fleet-specific concepts (pattern archetypes, phases, handoff files, ledger, SubagentStop handoff gate, workspace tiers) are about running multi-agent jobs and would be noise in a harness-convergence spec. One exception worth keeping in mind: their observation that *hooks are the only deterministic enforcement layer in Claude Code* and that *opencode's permission maps can encode a contract* (`qa/index.js:11-13`, `opencode.js:22-25`) is directly relevant to AgentUnison's "prevent drift / validate real behaviour" — the enforcement primitives per harness are the same even if what they enforce is different.
 
 ---
 
@@ -330,7 +330,7 @@ Marginally. The relevant abstraction is *one canonical spec projected by adapter
 - `ee/` is **AGPL-3.0-only** (`ee/package.json` `license`, `ee/LICENSE`, `docs/licensing.md:9`, SPDX headers enforced by `test/ee-boundary.test.js:146`). Avoid copying anything from `ee/` into a proprietary or MIT product.
 - `package.json` `files` for the npm tarball is `src/, README.md, LICENSE`; `publish-check.mjs:52-63` asserts no `ee/` content ships in the MIT package.
 
-For AgentConcord: reading and re-implementing ideas is unrestricted; lifting code verbatim from `src/` requires keeping the MIT notice (e.g. a `THIRD_PARTY_NOTICES` entry); nothing from `ee/`.
+For AgentUnison: reading and re-implementing ideas is unrestricted; lifting code verbatim from `src/` requires keeping the MIT notice (e.g. a `THIRD_PARTY_NOTICES` entry); nothing from `ee/`.
 
 ---
 
@@ -342,15 +342,15 @@ For AgentConcord: reading and re-implementing ideas is unrestricted; lifting cod
 | Refuse-on-divergence, skip-identical, `--force`, preserve/seed-once class (`fs-utils.js:37-59`) | **Adopt + extend** | Right default; add managed blocks / merge for user-owned files and backups before force. |
 | Whole-file `CLAUDE.md` / `AGENTS.md` pointers (`claude-code.js:336-347`, `pointers.js`) | **Reject** | Incompatible with adopting existing repos; clobbers human content. |
 | Capability abstraction + per-harness permission maps with quirk commentary (`claude-code.js:20-26`, `opencode.js:129-146`, `goose.js:47-51`) | **Adopt (as a knowledge base)** | The per-harness gotchas are the hard-won part; the abstraction shape transfers. |
-| Documented graceful degradation table per feature per target (§4) | **Adopt** | AgentConcord must state what each harness cannot express. |
+| Documented graceful degradation table per feature per target (§4) | **Adopt** | AgentUnison must state what each harness cannot express. |
 | Deterministic QA battery on compiled output + drift-by-recompile in CI (`src/qa/index.js`, `ci.yml:80-94`) | **Adopt** | Core of "prevent drift"; keep judges advisory. |
 | Ambient install scan of `./.claude` and `~/.claude` (`src/qa/installed.js`) | **Adopt + generalise** | Closest thing to "inspect existing harness"; extend to all harness dirs and `AGENTS.md`/`CLAUDE.md`. |
 | `eval --exec` posture: opt-in live runs, skip-loud, untrusted-workspace detection, noise floor (`src/eval/exec.js`) | **Adopt** | Right way to "validate real behaviour" without making CI flaky. |
 | Lexical IDF trigger scoring (`src/eval/index.js:64-80`) | **Adopt as a lint only** | Cheap smell detector; not behavioural evidence. |
-| Provenance frontmatter marker `x-fleetsmith-origin` (`claude-code.js:122`) | **Adopt (as a manager marker)** | Needed for ownership; add a stable "managed by AgentConcord" marker and a manifest. |
+| Provenance frontmatter marker `x-fleetsmith-origin` (`claude-code.js:122`) | **Adopt (as a manager marker)** | Needed for ownership; add a stable "managed by AgentUnison" marker and a manifest. |
 | No manifest / no uninstall / no orphan detection (§10) | **Reject** | A convergence tool must track what it owns. |
 | Hard-coded protected paths the spec cannot widen (`src/evolve/protected.js`) | **Adopt (principle)** | Keep validators/config out of agent-writable scope. |
-| Path-injection validation for interpolated hook values (`validate.js:33-49`, `claude-settings.js:184-186`) | **Adopt** | AgentConcord generates hooks too. |
+| Path-injection validation for interpolated hook values (`validate.js:33-49`, `claude-settings.js:184-186`) | **Adopt** | AgentUnison generates hooks too. |
 | Cache-stable prompts + expansion-time live state (`agent-prompt.js:10-15`, `claude-code.js:288-321`) | **Adopt** | Cheap, correct, harness-native. |
 | Fleet patterns / phases / handoffs / ledger / `_fleet/` tiers (`src/patterns`, `src/handover`, `src/compile/orchestrator.js`) | **Reject** | Multi-agent job orchestration, not harness convergence; would bloat the canonical model. |
 | SubagentStop handoff gate script (`claude-settings.js:89-177`) | **Reject content, adopt mechanism** | The *hook-as-only-deterministic-layer* insight is right; the handoff-file contract is fleet-specific. |
@@ -361,6 +361,6 @@ For AgentConcord: reading and re-implementing ideas is unrestricted; lifting cod
 | `install --scope user|project` with explicit skip-list and detected-tools banner (`src/install.js`) | **Adopt** | Good UX; extend skip-list reasoning to conflicts. |
 | Hand-rolled arg parser (`cli.js:867-886`) | **Reject** | Use a real parser with unknown-flag errors. |
 | POSIX-only generated hooks / probes (§8) | **Reject** | Need Windows-safe hook commands or a Node shim. |
-| `fleetsmith patch` typed YAML-Document edits with comment preservation, dry-run when non-TTY (`cli.js:333-373`) | **Adopt (pattern)** | AgentConcord will edit user config files; comment/format preservation and inert-by-default automation are the right rules. |
+| `fleetsmith patch` typed YAML-Document edits with comment preservation, dry-run when non-TTY (`cli.js:333-373`) | **Adopt (pattern)** | AgentUnison will edit user config files; comment/format preservation and inert-by-default automation are the right rules. |
 | Doc/code drift on `fleet.mcp` (`docs/spec.md:29` vs `opencode.js:204`) | **Learn from** | Every documented projection needs a per-target compile test. |
 | MIT licence on core | **OK to reuse ideas; keep notice if copying code** | `ee/` is AGPL — do not copy. |

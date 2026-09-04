@@ -1,7 +1,7 @@
-# agentconcord.yaml — intent. Edit freely, then run `agentconcord plan` to see the effect.
-# Machine state lives in .agentconcord/ledger.yaml (committed) and .agentconcord/local/ (ignored).
+# agentunison.yaml — intent. Edit freely, then run `agentunison plan` to see the effect.
+# Machine state lives in .agentunison/ledger.yaml (committed) and .agentunison/local/ (ignored).
 version: 1
-id: "f3cbe27a" # stable nonce used in managed blocks; never change
+id: "382f6cbf" # stable nonce used in managed blocks; never change
 targets: [ claude, codex, opencode ] # harnesses this repository is used with
 canonical:
   instructions: AGENTS.md # the only always-loaded instruction file
@@ -15,4 +15,5 @@ policy:
 # adapters:
 #   agents: []                     # opt-in generated agents: { source: .claude/agents/x.md, to: [opencode] }
 decisions:
+  ADOPT-MANAGED:CLAUDE.md: approve
   MODIFY:AGENTS.md:block: approve

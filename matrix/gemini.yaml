@@ -21,7 +21,7 @@ surfaces:
   settings:
     files: [.gemini/settings.json]
 instructions:
-  readsAgentsMd: { value: false, evidence: doc, checkedOn: 2026-09-04, note: "only via context.fileName in .gemini/settings.json (AgentConcord does not edit settings)" }
+  readsAgentsMd: { value: false, evidence: doc, checkedOn: 2026-09-04, note: "only via context.fileName in .gemini/settings.json (AgentUnison does not edit settings)" }
   importSyntax: { value: "@{path}", example: "@./AGENTS.md", maxDepth: 5, evidence: doc, checkedOn: 2026-09-04, note: "relative form shown as @./x.md; bare @AGENTS.md unverified" }
   followsSymlink: { value: null, evidence: none, checkedOn: 2026-09-04 }
   shimSafeWhenLiteral: true

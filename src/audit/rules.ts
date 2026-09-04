@@ -107,7 +107,7 @@ export function runAudit(ctx: Ctx, inv: Inventory): Finding[] {
   for (const e of ctx.ledger.managed) {
     if (e.mechanism !== 'link') continue;
     const it = inv.items.find((i) => i.path === e.path);
-    if (it && it.type === 'file' && ctx.localMechanisms[e.path] !== 'copy') out.push({ id: `A11:${e.path}`, rule: 'A11', severity: 'high', message: `${e.path} is a regular file where a committed symlink is expected (checkout without symlink support?)`, paths: [e.path], evidence: { fix: 'git config core.symlinks true && re-checkout, or set policy.symlinks: never and run agentconcord plan' } });
+    if (it && it.type === 'file' && ctx.localMechanisms[e.path] !== 'copy') out.push({ id: `A11:${e.path}`, rule: 'A11', severity: 'high', message: `${e.path} is a regular file where a committed symlink is expected (checkout without symlink support?)`, paths: [e.path], evidence: { fix: 'git config core.symlinks true && re-checkout, or set policy.symlinks: never and run agentunison plan' } });
   }
 
   // A12 — foreign manager markers

@@ -1,5 +1,5 @@
 node_modules/
 dist/
-.agentconcord/local/
+.agentunison/local/
 *.log
 .DS_Store

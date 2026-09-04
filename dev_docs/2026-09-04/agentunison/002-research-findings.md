@@ -24,8 +24,8 @@ document keeps only the findings that changed a design decision, and states the 
 |---|---|---|
 | Adapters produce a `FileSet`; one writer applies it; skip identical, refuse divergent | FleetSmith | Plan/apply engine: every change is a planned file operation; apply is the only writer. |
 | Five-way target classification `missing / own-link / foreign-link / real-file / real-dir` | agents-skills-sync | Inventory classifier, extended with `own-copy`, `own-shim`, `broken-link`, `wrong-target`. |
-| Quarantine-never-delete, in-repo, timestamped, reported | agents-skills-sync (+ hana's regret) | `.agentconcord/quarantine/<ts>/<relpath>`; DELETE only with explicit approval flag. |
-| Ownership manifest + version stamp + upgrade ledger | agentsync | `.agentconcord/state.yaml` ledger; `version` in manifest; upgrade notes. |
+| Quarantine-never-delete, in-repo, timestamped, reported | agents-skills-sync (+ hana's regret) | `.agentunison/quarantine/<ts>/<relpath>`; DELETE only with explicit approval flag. |
+| Ownership manifest + version stamp + upgrade ledger | agentsync | `.agentunison/state.yaml` ledger; `version` in manifest; upgrade notes. |
 | Relative symlinks through one stable indirection point; cycle + inode/realpath checks | hana, sync-skills, agent-sync (incident) | All links relative; target resolved and cycle-checked before linking; refuse to replace a real directory. |
 | Collection: real dir in harness path → move to canonical → link back | hana | ADOPT action for skills found only in a native dir. |
 | Loud fallback ladder (symlink → junction → copy → fail), never "created" when it fell back | agent-smith vs agent-sync | Projection result records the mechanism actually used; plan shows it. |
@@ -33,7 +33,7 @@ document keeps only the findings that changed a design decision, and states the 
 | Origin marker enabling reversible release; land-before-delete | sync-skills | Ledger `origin` per adopted item; MOVE = copy → verify → remove source. |
 | Frontmatter portability analysis (signal ≠ verdict; broken vs degraded) | sync-skills, agentsync | Skill lint categories: `blocking`, `degraded`, `info`. |
 | Capability matrix as data with per-harness quirks and a degradation table | FleetSmith, wshobson | `matrix/*.yaml` with `evidence`, `checkedOn`, `versions`; every projection decision cites a matrix key. |
-| CI gate: regenerate → tree must be clean; QA on produced output | wshobson, FleetSmith, agent-smith | `agentconcord verify` exit codes; idempotency test asserts byte-identical second run. |
+| CI gate: regenerate → tree must be clean; QA on produced output | wshobson, FleetSmith, agent-smith | `agentunison verify` exit codes; idempotency test asserts byte-identical second run. |
 | Live-exec posture: opt-in, skip loudly, never gate CI on model output | FleetSmith | `verify --live` separate from structural `verify`. |
 | Audit checklists (health check, budgets, before/after probe) | Adobe | Deterministic subset becomes audit rules; prompt-only checks are documented, not automated. |
 | Runtime "installed ≠ active harness" detection | agent-smith | `doctor` detects installed binaries + versions + config presence; targets are confirmed, not assumed from PATH. |
@@ -45,7 +45,7 @@ LLM-authored adapters; prose-as-engine; N identical instruction copies; uncondit
 `rm -rf`; regex patching of TOML/JSON; `cp -f` of user settings; gitignore-everything;
 `$HOME` side effects; marketplace data model; template agents/skills.
 
-## C. Gaps confirmed (AgentConcord's differentiation)
+## C. Gaps confirmed (AgentUnison's differentiation)
 
 1. No existing tool inventories and audits an existing harness setup before acting.
 2. No tool combines an ownership ledger with symlink projections.

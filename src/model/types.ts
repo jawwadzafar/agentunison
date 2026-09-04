@@ -14,13 +14,13 @@ export type AssetKind =
   | 'settings'     // harness settings / permissions / launch
   | 'hooks'
   | 'mcp'
-  | 'manifest'     // agentconcord.yaml / ledger
+  | 'manifest'     // agentunison.yaml / ledger
   | 'other';
 
 export type ContentClass =
   | 'canonical'             // the single source for its kind
   | 'native'                // harness-specific, no canonical equivalent; preserved
-  | 'managed'               // created by AgentConcord and present in the ledger
+  | 'managed'               // created by AgentUnison and present in the ledger
   | 'unmanaged-compatible'  // unledgered, but identical to what policy would create
   | 'legacy'                // superseded location/format
   | 'vendored'              // third-party managed tree (lock file / plugin cache); read-only

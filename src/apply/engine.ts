@@ -282,7 +282,7 @@ function landThenRemove(src: string, dst: string): void {
 
 function recordBlock(ledger: Ledger, file: string, content: string, ctx: Ctx): void {
   const id = ctx.manifest?.id ?? '';
-  const m = /<!-- agentconcord:begin id=[a-f0-9]{8} -->[\s\S]*?<!-- agentconcord:end -->/.exec(content.replace(/\r\n/g, '\n'));
+  const m = /<!-- agentunison:begin id=[a-f0-9]{8} -->[\s\S]*?<!-- agentunison:end -->/.exec(content.replace(/\r\n/g, '\n'));
   if (!m) return;
   const i = ledger.managed.findIndex((x) => x.path === file && x.mechanism === 'block');
   const e: LedgerEntry = { path: file, kind: 'instructions', mechanism: 'block', marker: id, sha256: sha256Text(m[0]) };

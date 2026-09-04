@@ -6,9 +6,9 @@ import { HARNESS_IDS } from './types.ts';
 import { pathType, readText, writeFileSafe } from '../util/fs.ts';
 import { readYaml, writeYamlStable, stringifyStable } from '../util/yamlio.ts';
 
-export const MANIFEST_FILE = 'agentconcord.yaml';
-export const LEDGER_FILE = '.agentconcord/ledger.yaml';
-export const LOCAL_DIR = '.agentconcord/local';
+export const MANIFEST_FILE = 'agentunison.yaml';
+export const LEDGER_FILE = '.agentunison/ledger.yaml';
+export const LOCAL_DIR = '.agentunison/local';
 export const LOCAL_STATE_FILE = `${LOCAL_DIR}/state.yaml`;
 
 export function newId(): string {
@@ -29,27 +29,27 @@ export function defaultManifest(targets: HarnessId[], id = newId()): Manifest {
 const MANIFEST_KEYS = new Set(['version', 'id', 'targets', 'canonical', 'policy', 'projections', 'adapters', 'decisions']);
 
 export function validateManifest(m: unknown): Manifest {
-  if (!m || typeof m !== 'object') throw new Error('agentconcord.yaml: not a map');
+  if (!m || typeof m !== 'object') throw new Error('agentunison.yaml: not a map');
   const o = m as Record<string, unknown>;
-  for (const k of Object.keys(o)) if (!MANIFEST_KEYS.has(k)) throw new Error(`agentconcord.yaml: unknown key '${k}'`);
-  if (o['version'] !== 1) throw new Error('agentconcord.yaml: version must be 1');
+  for (const k of Object.keys(o)) if (!MANIFEST_KEYS.has(k)) throw new Error(`agentunison.yaml: unknown key '${k}'`);
+  if (o['version'] !== 1) throw new Error('agentunison.yaml: version must be 1');
   const idStr = String(o['id'] ?? '');
-  if (!/^[a-f0-9]{8}$/.test(idStr)) throw new Error('agentconcord.yaml: id must be 8 hex chars');
+  if (!/^[a-f0-9]{8}$/.test(idStr)) throw new Error('agentunison.yaml: id must be 8 hex chars');
   const targets = o['targets'];
-  if (!Array.isArray(targets) || targets.length === 0) throw new Error('agentconcord.yaml: targets must be a non-empty list');
-  for (const t of targets) if (!HARNESS_IDS.includes(t as HarnessId)) throw new Error(`agentconcord.yaml: unknown target '${String(t)}'`);
+  if (!Array.isArray(targets) || targets.length === 0) throw new Error('agentunison.yaml: targets must be a non-empty list');
+  for (const t of targets) if (!HARNESS_IDS.includes(t as HarnessId)) throw new Error(`agentunison.yaml: unknown target '${String(t)}'`);
   const canonical = (o['canonical'] ?? {}) as Record<string, unknown>;
   const instructions = typeof canonical['instructions'] === 'string' ? canonical['instructions'] : 'AGENTS.md';
   const skills = typeof canonical['skills'] === 'string' ? canonical['skills'] : '.agents/skills';
-  for (const p of [instructions, skills]) if (p.startsWith('/') || p.includes('..')) throw new Error(`agentconcord.yaml: canonical path '${p}' must be repo-relative`);
+  for (const p of [instructions, skills]) if (p.startsWith('/') || p.includes('..')) throw new Error(`agentunison.yaml: canonical path '${p}' must be repo-relative`);
   const policy = (o['policy'] ?? {}) as Record<string, unknown>;
   const symlinks = (policy['symlinks'] ?? 'auto') as Manifest['policy']['symlinks'];
-  if (!['auto', 'never', 'always'].includes(symlinks)) throw new Error('agentconcord.yaml: policy.symlinks must be auto|never|always');
+  if (!['auto', 'never', 'always'].includes(symlinks)) throw new Error('agentunison.yaml: policy.symlinks must be auto|never|always');
   const onConflict = (policy['onConflict'] ?? 'quarantine') as Manifest['policy']['onConflict'];
-  if (!['quarantine', 'ask'].includes(onConflict)) throw new Error('agentconcord.yaml: policy.onConflict must be quarantine|ask');
+  if (!['quarantine', 'ask'].includes(onConflict)) throw new Error('agentunison.yaml: policy.onConflict must be quarantine|ask');
   const mb = (policy['managedBlocks'] ?? {}) as Record<string, unknown>;
   const decisions = (o['decisions'] ?? {}) as Record<string, unknown>;
-  for (const [k, v] of Object.entries(decisions)) if (typeof v !== 'string') throw new Error(`agentconcord.yaml: decisions.${k} must be a string`);
+  for (const [k, v] of Object.entries(decisions)) if (typeof v !== 'string') throw new Error(`agentunison.yaml: decisions.${k} must be a string`);
   const adaptersRaw = o['adapters'] as Manifest['adapters'] | undefined;
   const out: Manifest = {
     version: 1,
@@ -72,8 +72,8 @@ export function loadManifest(root: string): Manifest | undefined {
 /** Render the manifest with comments (only used when the file does not exist yet). */
 export function renderManifest(m: Manifest): string {
   const lines = [
-    '# agentconcord.yaml — intent. Edit freely, then run `agentconcord plan` to see the effect.',
-    '# Machine state lives in .agentconcord/ledger.yaml (committed) and .agentconcord/local/ (ignored).',
+    '# agentunison.yaml — intent. Edit freely, then run `agentunison plan` to see the effect.',
+    '# Machine state lives in .agentunison/ledger.yaml (committed) and .agentunison/local/ (ignored).',
     `version: ${m.version}`,
     `id: "${m.id}"                    # stable nonce used in managed blocks; never change`,
     `targets: [${m.targets.join(', ')}]   # harnesses this repository is used with`,
@@ -135,7 +135,7 @@ export function saveLocalState(root: string, platform: PlatformInfo, mechanisms:
   writeYamlStable(path.join(root, LOCAL_STATE_FILE), { version: 1, platform, mechanisms } satisfies LocalState);
 }
 
-/** `.agentconcord/local/` is self-ignoring: it carries a `.gitignore` containing `*`. */
+/** `.agentunison/local/` is self-ignoring: it carries a `.gitignore` containing `*`. */
 export function ensureLocalDir(root: string): void {
   const dir = path.join(root, LOCAL_DIR);
   if (pathType(dir) === 'missing') {

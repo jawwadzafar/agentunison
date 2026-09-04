@@ -128,25 +128,25 @@ export function cmdAudit(ctx: Ctx, io: CommandIO): number {
 }
 
 export function cmdPlan(ctx: Ctx, io: CommandIO, opts: { diff: boolean }): number {
-  if (!ctx.manifest) { io.err('No agentconcord.yaml — run `agentconcord init` first (it plans before writing).'); return 1; }
+  if (!ctx.manifest) { io.err('No agentunison.yaml — run `agentunison init` first (it plans before writing).'); return 1; }
   const { plan } = pipeline(ctx);
   io.out(io.json ? JSON.stringify(plan, null, 2) : formatPlan(plan, { diff: opts.diff }));
   return plan.actions.some((a) => a.op !== 'PRESERVE') ? 2 : 0;
 }
 
 export function cmdApply(ctx: Ctx, io: CommandIO, opts: { approve: string[]; allowDelete: boolean; planFile?: string }): number {
-  if (!ctx.manifest) { io.err('No agentconcord.yaml — run `agentconcord init` first.'); return 1; }
+  if (!ctx.manifest) { io.err('No agentunison.yaml — run `agentunison init` first.'); return 1; }
   let plan: Plan;
   if (opts.planFile) plan = JSON.parse(fs.readFileSync(opts.planFile, 'utf8')) as Plan;
   else plan = pipeline(ctx).plan;
   const approve = opts.approve.includes('all') ? 'all' : new Set(opts.approve);
   const res = applyPlan(ctx, plan, { approve, allowDelete: opts.allowDelete });
   if (res.refused) {
-    io.err(`REFUSED: ${res.refused.action.id} — precondition on ${res.refused.precondition.path}: ${res.refused.actual}. Nothing was written. Re-run \`agentconcord plan\`.`);
+    io.err(`REFUSED: ${res.refused.action.id} — precondition on ${res.refused.precondition.path}: ${res.refused.actual}. Nothing was written. Re-run \`agentunison plan\`.`);
     return 7;
   }
   if (res.rolledBack) {
-    io.err(`FAILED at ${res.rolledBack.failedAction}: ${res.rolledBack.error}. Rolled back ${res.rolledBack.restored.length} operation(s)${res.rolledBack.notRestored.length ? `; could NOT restore: ${res.rolledBack.notRestored.join('; ')}` : ''}. Journal: .agentconcord/local/journal/`);
+    io.err(`FAILED at ${res.rolledBack.failedAction}: ${res.rolledBack.error}. Rolled back ${res.rolledBack.restored.length} operation(s)${res.rolledBack.notRestored.length ? `; could NOT restore: ${res.rolledBack.notRestored.join('; ')}` : ''}. Journal: .agentunison/local/journal/`);
     return 1;
   }
   // record approvals as decisions so re-runs do not re-ask
@@ -193,7 +193,7 @@ export function cmdDoctor(ctx: Ctx, io: CommandIO): number {
 }
 
 export function cmdInit(ctx: Ctx, io: CommandIO, opts: { targets?: HarnessId[]; approve: string[]; yes: boolean; allowDelete: boolean }): number {
-  if (ctx.manifest) { io.out('agentconcord.yaml already exists — running plan + apply.'); return cmdApply(ctx, io, { approve: opts.approve, allowDelete: opts.allowDelete }); }
+  if (ctx.manifest) { io.out('agentunison.yaml already exists — running plan + apply.'); return cmdApply(ctx, io, { approve: opts.approve, allowDelete: opts.allowDelete }); }
   const inv0 = scanInventory(ctx);
   const targets = opts.targets ?? detectTargets(ctx, inv0);
   const manifest = defaultManifest(targets);
@@ -209,10 +209,10 @@ export function cmdInit(ctx: Ctx, io: CommandIO, opts: { targets?: HarnessId[]; 
       io.out('\nThis repository already has an agent setup. Actions marked "?" change or move existing files and need approval.');
       io.out('Re-run with --approve all (or --approve "<id>,…") to apply them; safe actions are applied now.');
     } else {
-      io.out('\nExisting setup detected: only safe actions are applied. Approve the rest with: agentconcord apply --approve all');
+      io.out('\nExisting setup detected: only safe actions are applied. Approve the rest with: agentunison apply --approve all');
     }
   }
-  // the plan itself carries ADD agentconcord.yaml (intent record) as its first safe action
+  // the plan itself carries ADD agentunison.yaml (intent record) as its first safe action
   const res = applyPlan(ctx2, plan, { approve: approve.includes('all') ? 'all' : new Set(approve), allowDelete: opts.allowDelete });
   if (res.refused) { io.err(`REFUSED: ${res.refused.action.id}: ${res.refused.actual}`); return 7; }
   const decisions: Record<string, string> = {};
@@ -226,7 +226,7 @@ export function cmdInit(ctx: Ctx, io: CommandIO, opts: { targets?: HarnessId[]; 
 }
 
 export function cmdUninstall(ctx: Ctx, io: CommandIO, opts: { keepLinks: boolean }): number {
-  if (!ctx.manifest && ctx.ledger.managed.length === 0) { io.out('Nothing managed by AgentConcord here.'); return 0; }
+  if (!ctx.manifest && ctx.ledger.managed.length === 0) { io.out('Nothing managed by AgentUnison here.'); return 0; }
   const canonSkills = ctx.manifest?.canonical.skills ?? '.agents/skills';
   const done: string[] = [];
   const kept: string[] = [];
@@ -264,7 +264,7 @@ export function cmdUninstall(ctx: Ctx, io: CommandIO, opts: { keepLinks: boolean
   removePath(abs(ctx.root, LEDGER_FILE));
   removePath(abs(ctx.root, MANIFEST_FILE));
   const localState = abs(ctx.root, `${LOCAL_DIR}/state.yaml`); removePath(localState);
-  try { if (fs.readdirSync(abs(ctx.root, '.agentconcord')).length === 0) fs.rmdirSync(abs(ctx.root, '.agentconcord')); } catch { /* keep */ }
+  try { if (fs.readdirSync(abs(ctx.root, '.agentunison')).length === 0) fs.rmdirSync(abs(ctx.root, '.agentunison')); } catch { /* keep */ }
   for (const d of done) io.out(`  ${d}`);
   for (const k of kept) io.out(`  ${k}`);
   const q = abs(ctx.root, `${LOCAL_DIR}/quarantine`);

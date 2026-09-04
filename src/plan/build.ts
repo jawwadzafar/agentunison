@@ -45,8 +45,8 @@ export function buildPlan(ctx: Ctx, inv: Inventory, findings: Finding[], decisio
     return { schema: 1, root: ctx.root, actions: [], findings, pending: { review: 0, destructive: 0 } };
   }
   if (!m) return { schema: 1, root: ctx.root, actions: [], findings, pending: { review: 0, destructive: 0 } };
-  if (!existsExact(abs(ctx.root, 'agentconcord.yaml'))) {
-    add({ op: 'ADD', risk: 'safe', kind: 'manifest', path: 'agentconcord.yaml', content: renderManifest(m), reason: 'record intent (targets, canonical paths, policy)', preconditions: [pre('agentconcord.yaml')] });
+  if (!existsExact(abs(ctx.root, 'agentunison.yaml'))) {
+    add({ op: 'ADD', risk: 'safe', kind: 'manifest', path: 'agentunison.yaml', content: renderManifest(m), reason: 'record intent (targets, canonical paths, policy)', preconditions: [pre('agentunison.yaml')] });
   }
 
   // ── 1. root instructions ───────────────────────────────────────────────────

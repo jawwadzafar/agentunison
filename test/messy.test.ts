@@ -83,7 +83,7 @@ test('messy: approve-all converges, verify is clean, re-plan is empty, quarantin
   const shim = parseShim(read(r, 'CLAUDE.md'));
   assert.equal(shim.isShim, true); assert.match(shim.harnessSpecific ?? '', /reviewer/);
   const agents = read(r, 'AGENTS.md');
-  assert.match(agents, /## Merged from CLAUDE.md/); assert.match(agents, /Deploy notes/); assert.match(agents, /agentconcord:begin/);
+  assert.match(agents, /## Merged from CLAUDE.md/); assert.match(agents, /Deploy notes/); assert.match(agents, /agentunison:begin/);
   assert.ok(!/Claude specifics/.test(agents));
   // natives untouched
   assert.equal(read(r, '.claude/agents/reviewer.md').includes('You review diffs.'), true);
@@ -96,7 +96,7 @@ test('messy: approve-all converges, verify is clean, re-plan is empty, quarantin
   assert.match(read(r, `${res.quarantineDir}/MANIFEST.yaml`), /from: .claude\/skills\/review/);
   assert.ok(!exists(r, '.claude/commands/release.md') && !exists(r, '.claude/commands/frontend'));
   // decisions recorded; verify clean; re-plan empty; idempotent
-  assert.match(read(r, 'agentconcord.yaml'), /MODIFY:CLAUDE.md:to-shim: approve/);
+  assert.match(read(r, 'agentunison.yaml'), /MODIFY:CLAUDE.md:to-shim: approve/);
   assert.deepEqual(verifyOk(r), { ok: true, issues: [] });
   const h = treeHash(r);
   const again = applyAll(r);
@@ -112,7 +112,7 @@ test('messy: apply refuses when the tree changed after planning (preconditions)'
   assert.ok(res.refused, 'must refuse');
   assert.equal(res.executed.length, 0, 'nothing written');
   assert.ok(exists(r, '.claude/skills/local-only/SKILL.md') && !exists(r, '.agents/skills/local-only'));
-  assert.ok(!exists(r, '.agentconcord/ledger.yaml'), 'ledger not written on refusal');
+  assert.ok(!exists(r, '.agentunison/ledger.yaml'), 'ledger not written on refusal');
 });
 
 test('messy: partial approval only executes the approved chain', () => {
@@ -125,6 +125,6 @@ test('messy: partial approval only executes the approved chain', () => {
   const v = verifyOk(r);
   assert.ok(v.issues.every((i) => i.startsWith('invariant:')), 'remaining issues are the known un-converged natives, not drift');
   const ctx = buildCtx(r);
-  assert.match(read(r, 'agentconcord.yaml'), /ADOPT:.agents\/skills\/release: approve/);
+  assert.match(read(r, 'agentunison.yaml'), /ADOPT:.agents\/skills\/release: approve/);
   assert.ok(ctx.manifest?.decisions['ADOPT:.agents/skills/release'] === 'approve');
 });

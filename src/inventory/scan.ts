@@ -149,9 +149,9 @@ export function scanInventory(ctx: Ctx): Inventory {
     push({ path: nested, ...describe(nested), harness: 'shared', kind: 'instructions', cls: 'native', evidence: ['nested instruction file (audited only in v1)'] });
   }
 
-  // ── AgentConcord's own files ──────────────────────────────────────────────────
-  for (const f of ['agentconcord.yaml', '.agentconcord/ledger.yaml']) {
-    if (existsExact(abs(ctx.root, f))) push({ path: f, ...describe(f), kind: 'manifest', cls: 'managed', evidence: ['agentconcord'] });
+  // ── AgentUnison's own files ──────────────────────────────────────────────────
+  for (const f of ['agentunison.yaml', '.agentunison/ledger.yaml']) {
+    if (existsExact(abs(ctx.root, f))) push({ path: f, ...describe(f), kind: 'manifest', cls: 'managed', evidence: ['agentunison'] });
   }
 
   // ── ledgered paths that no longer exist ───────────────────────────────────────
@@ -224,7 +224,7 @@ function walkAny(root: string, dir: string, exts: string[]): string[] {
   return out;
 }
 
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'vendor', '.agentconcord', 'target', '.venv', 'venv', '__pycache__']);
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'vendor', '.agentunison', 'target', '.venv', 'venv', '__pycache__']);
 
 function findNested(root: string, names: string[], maxDepth = 4): string[] {
   const out: string[] = [];

@@ -5,13 +5,13 @@ managed:
     path: .claude/skills
     target: ../.agents/skills
   - kind: instructions
-    marker: f3cbe27a
+    marker: 382f6cbf
     mechanism: block
     path: AGENTS.md
-    sha256: d7c8aed75764942990b0cd832a4d3602f4882f6e1908dc8ecae5741812b515e7
+    sha256: c60a9ac16b6100afec0cef3339acad566d87978a0933f2335b5574fa64eceace
   - harness: claude
     kind: instructions
     mechanism: shim
     path: CLAUDE.md
-    sha256: 1f51955f19cb2f21ab21b52af152308945e394dda235470ab52582bde04d810f
+    sha256: bbcbf35be8a76cc765fef19809cfd99c833d3d06172acba7e735ab8794ff3592
 version: 1

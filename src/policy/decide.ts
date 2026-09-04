@@ -75,7 +75,7 @@ export function decideProjections(ctx: Ctx, inv: Inventory): Decisions {
     let reason: string;
     const ev: string[] = [evidenceTag(h, 'skills.readsCanonical', hm.skills.readsCanonical)];
     if (pinned === 'copy' || pinned === 'none' || pinned === 'symlink-dir' || pinned === 'symlink-entries') {
-      mech = pinned; reason = `pinned in agentconcord.yaml projections.${h}.skills`;
+      mech = pinned; reason = `pinned in agentunison.yaml projections.${h}.skills`;
       if ((mech === 'symlink-dir' || mech === 'symlink-entries') && !linkOk) { mech = 'copy'; reason += ' — but symlinks unavailable here, falling back to copy'; }
     } else if (linkOk && (m.policy.symlinks === 'always' || dirVerified || entryVerified)) {
       if (nativeHasContent) {
@@ -93,7 +93,7 @@ export function decideProjections(ctx: Ctx, inv: Inventory): Decisions {
       ev.push(evidenceTag(h, 'skills.followsDirSymlink', hm.skills.followsDirSymlink));
     }
     const deg = [...dupDeg];
-    if (mech === 'copy') deg.push('copies drift: edits made in the copy must be back-ported (agentconcord apply --approve BACKPORT:…)');
+    if (mech === 'copy') deg.push('copies drift: edits made in the copy must be back-ported (agentunison apply --approve BACKPORT:…)');
     out.skills.push({ harness: h, kind: 'skills', mechanism: mech, reason, evidence: ev, degradation: deg });
   }
   return out;

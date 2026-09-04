@@ -4,12 +4,12 @@ import type { PlatformInfo } from '../model/types.ts';
 
 /**
  * Probe the platform *inside the repository* (bind mounts, WSL drvfs and network shares behave
- * differently from os.tmpdir()). Creates and removes `.agentconcord/local/.probe-<pid>`.
+ * differently from os.tmpdir()). Creates and removes `.agentunison/local/.probe-<pid>`.
  */
 export function probePlatform(root: string): PlatformInfo {
   const os = process.platform;
   const family: 'posix' | 'win32' = os === 'win32' ? 'win32' : 'posix';
-  const dir = path.join(root, '.agentconcord', 'local', `.probe-${process.pid}`);
+  const dir = path.join(root, '.agentunison', 'local', `.probe-${process.pid}`);
   let symlinks = false;
   let junctions = false;
   let caseSensitive = true;
@@ -40,7 +40,7 @@ export function probePlatform(root: string): PlatformInfo {
   } finally {
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ }
     // remove empty scaffolding if we created it
-    for (const p of [path.join(root, '.agentconcord', 'local'), path.join(root, '.agentconcord')]) {
+    for (const p of [path.join(root, '.agentunison', 'local'), path.join(root, '.agentunison')]) {
       try { if (fs.readdirSync(p).length === 0) fs.rmdirSync(p); } catch { /* ignore */ }
     }
   }

@@ -7,7 +7,7 @@ lets one stand in for another.
 |---|---|---|---|
 | **Structural** (`verify`) | Does the repository match what the ledger and manifest say, and does it satisfy the architecture invariants? | filesystem + hashes + frontmatter parsing | yes (exit 4/5) |
 | **Behavioral** (`verify --live`) | Does each *installed* harness actually see the canonical instructions and skills? | real CLI probes from the matrix, with timeouts | optional (exit 6); skipped loudly when a binary is absent |
-| **Self-tests** (`npm test`) | Does AgentConcord itself behave: idempotency, safety, fallbacks, migrations, tamper detection? | fixtures + unit tests; opt-in live suite | yes for the product repo |
+| **Self-tests** (`npm test`) | Does AgentUnison itself behave: idempotency, safety, fallbacks, migrations, tamper detection? | fixtures + unit tests; opt-in live suite | yes for the product repo |
 
 ## 1. Structural checks (`verify`)
 
@@ -64,10 +64,10 @@ to answer; the tool never answers them itself.
 | Gemini CLI | `gemini skills list --all` | canonical skills listed | structural for instructions |
 | Cursor | — | structural only (no documented listing) | reported as such |
 
-The nonce is a stable line inside the `AGENTS.md` managed block (`agentconcord: <hash8>`),
+The nonce is a stable line inside the `AGENTS.md` managed block (`agentunison: <hash8>`),
 so probes need no model reasoning to succeed. Results per harness are one of
 `verified | structural-only | not-installed | failed`, with the raw evidence saved to
-`.agentconcord/verify/<harness>.log` (gitignored).
+`.agentunison/verify/<harness>.log` (gitignored).
 
 ## 4. Self-test matrix (product repository)
 
@@ -83,7 +83,7 @@ so probes need no model reasoning to succeed. Results per harness are one of
 | tamper | after apply: append text to the shim; replace the symlink with a dir; edit a generated adapter; break a managed block; add a duplicate skill in `.claude/skills` → `verify` exits 4/5 with the exact path | clean, messy-legacy |
 | rollback | kill-switch fault injection mid-apply → journal reverse restores tree; `uninstall` after apply restores quarantined items and removes only ledgered paths | messy-legacy |
 | symlink / no-symlink | `policy.symlinks: never` → copies with hashes; probe failure simulation → junction/copy fallback recorded, never "linked" | clean |
-| live (opt-in, `AGENTCONCORD_LIVE=1`) | runs the behavioral probes against installed harnesses on the clean fixture; skipped loudly otherwise | clean |
+| live (opt-in, `AGENTUNISON_LIVE=1`) | runs the behavioral probes against installed harnesses on the clean fixture; skipped loudly otherwise | clean |
 
 The messy-legacy fixture is checked in as plain files plus a small script that creates
 the symlinks at test time (so the product repo itself has no committed symlinks that

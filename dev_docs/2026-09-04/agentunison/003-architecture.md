@@ -16,7 +16,7 @@
                  └─────────┬────────────┘  PRESERVE QUARANTINE DEPRECATE DELETE
                            ▼   approvals
                  ┌──────────────────────┐
-                 │ apply (single writer)│──▶ ledger (.agentconcord/state.yaml)
+                 │ apply (single writer)│──▶ ledger (.agentunison/state.yaml)
                  └─────────┬────────────┘
                            ▼
                  ┌──────────────────────┐
@@ -29,17 +29,17 @@ writes to the repository, and it writes only what the plan lists.
 
 ## 2. Content classes (the ownership model)
 
-| Class | Meaning | Who edits | AgentConcord may |
+| Class | Meaning | Who edits | AgentUnison may |
 |---|---|---|---|
 | **canonical** | The single source for an asset kind (`AGENTS.md`, `.agents/skills/<n>/`) | user / agents | validate; append/repair its *managed block* only; MODIFY content only via an approved ADOPT action |
 | **native** | Harness-specific content with no canonical equivalent (`.claude/agents/*.md`, `.codex/config.toml`, `.cursor/rules/*.mdc`, settings, hooks) | user | inventory, audit, PRESERVE; use as a *source* for opt-in generated adapters |
-| **managed** | Created by AgentConcord: shims, symlinks, copies, generated adapters, managed blocks | AgentConcord | create, refresh, remove — always recorded in the ledger with a content hash or link target |
+| **managed** | Created by AgentUnison: shims, symlinks, copies, generated adapters, managed blocks | AgentUnison | create, refresh, remove — always recorded in the ledger with a content hash or link target |
 | **legacy** | Superseded location (`.claude/commands/*.md`, `.cursorrules`, a real `.claude/skills/<n>` when the canonical exists) | user | propose ADOPT / QUARANTINE / DEPRECATE; never act without approval |
 | **foreign** | Anything else inside a harness directory (plugin caches, unknown files, other tools' managed markers) | others | list; never touch |
-| **quarantined** | Displaced content under `.agentconcord/quarantine/<ts>/` | AgentConcord | restore on `uninstall`/`rollback`; never auto-purge |
+| **quarantined** | Displaced content under `.agentunison/quarantine/<ts>/` | AgentUnison | restore on `uninstall`/`rollback`; never auto-purge |
 
 "Own-ness" is decided by the ledger, not by path pattern or link-target heuristics. A
-symlink AgentConcord did not record is `foreign` even if it points at the canonical dir.
+symlink AgentUnison did not record is `foreign` even if it points at the canonical dir.
 
 ## 3. Asset kinds and their canonical/projection rules (v1)
 
@@ -70,7 +70,7 @@ Decision for (kind, harness):
 4. Else if a lossless mapping exists and the user opted in → `generated`.
 5. Else → `none`, and the audit lists what that harness cannot see.
 
-Overrides in `agentconcord.yaml` (`policy.symlinks: never|auto|always`, per-target
+Overrides in `agentunison.yaml` (`policy.symlinks: never|auto|always`, per-target
 `projection:` pins) are honored and recorded. `always` still refuses when the probe fails.
 
 Symlink rules: relative targets only; resolve and cycle-check (depth ≤ 8, realpath
@@ -111,19 +111,19 @@ verify:
   live: { command: ["claude","-p","--model","haiku","--debug-file","{debugFile}","--output-format","text","{prompt}"], timeoutMs: 180000, cost: api-call }
 ```
 
-## 6. Files AgentConcord owns
+## 6. Files AgentUnison owns
 
 ```
-agentconcord.yaml            intent: version, targets, canonical paths, policy, recorded decisions (committed)
-.agentconcord/state.yaml     ledger: every managed path with kind, mechanism, source, target/hash, origin, createdAt (committed)
-.agentconcord/quarantine/    displaced content, timestamped (gitignored via managed block; git history is the durable copy)
+agentunison.yaml            intent: version, targets, canonical paths, policy, recorded decisions (committed)
+.agentunison/state.yaml     ledger: every managed path with kind, mechanism, source, target/hash, origin, createdAt (committed)
+.agentunison/quarantine/    displaced content, timestamped (gitignored via managed block; git history is the durable copy)
 CLAUDE.md / GEMINI.md        shims (only when those harnesses are targets)
 .claude/skills               symlink or copy tree (only when claude is a target)
-<AGENTS.md managed block>    <!-- agentconcord:begin --> … <!-- agentconcord:end --> (≤ 12 lines)
-<.gitignore managed block>   # >>> agentconcord >>> … # <<< agentconcord <<<
+<AGENTS.md managed block>    <!-- agentunison:begin --> … <!-- agentunison:end --> (≤ 12 lines)
+<.gitignore managed block>   # >>> agentunison >>> … # <<< agentunison <<<
 ```
 
-Nothing else is written. In particular AgentConcord never edits settings, hooks, MCP,
+Nothing else is written. In particular AgentUnison never edits settings, hooks, MCP,
 rules, or native agent files, and never writes under `.git/` or `$HOME`.
 
 ## 7. Module layout (implementation)
@@ -156,8 +156,8 @@ Dependencies: `yaml` (runtime). Everything else from Node's standard library.
   default Claude skills projection when `.claude/skills` exists with content; whole-dir
   `symlink-dir` only when the dir is absent or empty. Mechanisms implement a small interface
   (plan/apply/verify/uninstall) so new ones (e.g. Gemini `skills link`) add without core edits.
-- Committed vs local state: `.agentconcord/ledger.yaml` (committed: path, kind, harness,
-  mechanism **class**, target or hash) and `.agentconcord/local/` (gitignored by its own `*`
+- Committed vs local state: `.agentunison/ledger.yaml` (committed: path, kind, harness,
+  mechanism **class**, target or hash) and `.agentunison/local/` (gitignored by its own `*`
   `.gitignore`: platform, mechanism actually used, journal, quarantine, verify logs).
 - Owned files list (§6) changes: no `.gitignore` managed block; no `state.yaml`; `id:` in the
   manifest is the nonce used in the `AGENTS.md` managed block.

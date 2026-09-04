@@ -5,15 +5,15 @@ Language/runtime: TypeScript on Node.js (see `docs/adr/ADR-0001-language-and-pac
 ## Repository layout (product)
 
 ```
-agentconcord/
-  package.json            name agentconcord, bin agentconcord, type module, engines node >= 20
+agentunison/
+  package.json            name agentunison, bin agentunison, type module, engines node >= 20
   tsconfig.json           strict, erasable-syntax-only, outDir dist/
   src/                    see 003 §7
   matrix/                 claude.yaml codex.yaml opencode.yaml copilot.yaml cursor.yaml gemini.yaml + schema.yaml
   test/                   *.test.ts (node:test), fixtures/, helpers/
   docs/adr/               ADR-0001 language & packaging (more as decisions land)
   dev_docs/2026-09-04/    research + design + PROGRESS (this set)
-  AGENTS.md               the product repo's own instructions (dogfooded via `agentconcord init` at the end)
+  AGENTS.md               the product repo's own instructions (dogfooded via `agentunison init` at the end)
   README.md
 ```
 
@@ -21,7 +21,7 @@ agentconcord/
 
 | # | Milestone | Deliverable | Tests |
 |---|---|---|---|
-| M0 | Scaffold | package.json, tsconfig, `node --test` runner, `yaml` dep, CLI skeleton with `parseArgs`, exit codes, `--json` | smoke: `agentconcord --help`, `doctor` |
+| M0 | Scaffold | package.json, tsconfig, `node --test` runner, `yaml` dep, CLI skeleton with `parseArgs`, exit codes, `--json` | smoke: `agentunison --help`, `doctor` |
 | M1 | Matrix + probe | `matrix/*.yaml` for 6 harnesses with evidence fields; loader + schema validation; platform probe (symlink/junction capability in a temp dir); `doctor` | matrix schema tests; probe test |
 | M2 | Inventory | scanners for all surfaces in 005 §2; classifier (ledger-aware); frontmatter parser; vendored detection | unit + `inspect` on clean and messy fixtures (golden JSON) |
 | M3 | Audit | rules A01–A13; paragraph similarity (normalized shingles, Jaccard); budgets from matrix | golden findings on messy fixture |
@@ -31,7 +31,7 @@ agentconcord/
 | M7 | Live verification | probes for codex / opencode / claude (+ copilot/gemini list commands) with timeouts and result classes; nonce in managed block | opt-in live suite run on this machine (all three installed); recorded in PROGRESS |
 | M8 | Generated agent adapters | claude → opencode (Markdown) and claude → codex (TOML + registration note); header marker; degradation list; source-hash staleness | golden outputs; stale-adapter detection |
 | M9 | `init` UX | fresh-repo path (skeleton AGENTS.md, manifest, projections, verify); existing-repo path (audit+plan+prompt/approvals) | clean fixture end-to-end; messy fixture non-interactive path |
-| M10 | Dogfood + docs | run `agentconcord init` on the product repo itself; README with the two-command story; `verify` in CI workflow | product repo verify passes |
+| M10 | Dogfood + docs | run `agentunison init` on the product repo itself; README with the two-command story; `verify` in CI workflow | product repo verify passes |
 
 ## Acceptance (v1 success criteria mapped)
 
