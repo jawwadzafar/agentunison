@@ -1,0 +1,41 @@
+harness: opencode
+displayName: OpenCode
+versionsVerified: ["1.18.20"]
+detect:
+  binaries: [opencode]
+  versionArgs: ["--version"]
+  projectDirs: [.opencode]
+  files: [opencode.json, opencode.jsonc]
+surfaces:
+  instructions:
+    root: [AGENTS.md]
+    nestedName: AGENTS.md
+    fallbackRoot: [CLAUDE.md]
+  skills:
+    dirs: [.opencode/skills, .agents/skills, .claude/skills]
+    legacyDirs: [.opencode/skill]
+  agents:
+    dirs: [.opencode/agents]
+    legacyDirs: [.opencode/agent]
+    format: opencode-md
+  commands:
+    dirs: [.opencode/commands]
+    legacyDirs: [.opencode/command]
+  settings:
+    files: [opencode.json, opencode.jsonc]
+instructions:
+  readsAgentsMd: { value: true, evidence: doc, checkedOn: 2026-09-04, note: "CLAUDE.md used only when AGENTS.md is absent; OpenCode 2 reads only AGENTS.md" }
+  importSyntax: { value: null, evidence: doc, checkedOn: 2026-09-04 }
+  followsSymlink: { value: true, evidence: bin, checkedOn: 2026-09-04, platforms: [posix], note: "fs.exists-based checks (source level)" }
+skills:
+  readsCanonical: { value: true, evidence: test, checkedOn: 2026-09-04 }
+  readsClaudeSkills: { value: true, evidence: doc, checkedOn: 2026-09-04 }
+  followsDirSymlink: { value: true, evidence: test, checkedOn: 2026-09-04, platforms: [posix] }
+  followsEntrySymlink: { value: true, evidence: test, checkedOn: 2026-09-04, platforms: [posix] }
+  dedup: first-wins
+verify:
+  live:
+    kind: opencode-debug-skill
+    timeoutMs: 45000
+    cost: none
+    note: "observed to hang once; always run under a timeout"

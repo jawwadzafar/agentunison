@@ -1,0 +1,40 @@
+harness: codex
+displayName: Codex CLI
+versionsVerified: ["0.144.4"]
+detect:
+  binaries: [codex]
+  versionArgs: ["--version"]
+  projectDirs: [.codex]
+  files: [AGENTS.md, AGENTS.override.md]
+surfaces:
+  instructions:
+    root: [AGENTS.md, AGENTS.override.md]
+    nestedName: AGENTS.md
+  skills:
+    dirs: [.agents/skills]
+    legacyDirs: [.codex/skills]
+  agents:
+    dirs: [.codex/agents]
+    format: codex-toml
+  settings:
+    files: [.codex/config.toml]
+  hooks:
+    files: [.codex/hooks.json]
+instructions:
+  readsAgentsMd: { value: true, evidence: doc, checkedOn: 2026-09-04 }
+  importSyntax: { value: null, evidence: doc, checkedOn: 2026-09-04 }
+  followsSymlink: { value: true, evidence: test, checkedOn: 2026-09-04, platforms: [posix] }
+  byteBudget: 32768
+  note: "AGENTS.override.md wins per directory; concatenated root→cwd; 32 KiB default cap"
+skills:
+  readsCanonical: { value: true, evidence: doc, checkedOn: 2026-09-04, note: ".agents/skills in cwd and every parent to repo root" }
+  readsClaudeSkills: { value: false, evidence: doc, checkedOn: 2026-09-04 }
+  followsDirSymlink: { value: true, evidence: doc, checkedOn: 2026-09-04, platforms: [posix] }
+  followsEntrySymlink: { value: true, evidence: test, checkedOn: 2026-09-04, platforms: [posix] }
+  dedup: none
+  extraFrontmatterSidecar: agents/openai.yaml
+verify:
+  live:
+    kind: codex-prompt-input
+    timeoutMs: 60000
+    cost: none

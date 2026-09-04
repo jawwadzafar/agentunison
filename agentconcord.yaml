@@ -1,0 +1,18 @@
+# agentconcord.yaml — intent. Edit freely, then run `agentconcord plan` to see the effect.
+# Machine state lives in .agentconcord/ledger.yaml (committed) and .agentconcord/local/ (ignored).
+version: 1
+id: "f3cbe27a" # stable nonce used in managed blocks; never change
+targets: [ claude, codex, opencode ] # harnesses this repository is used with
+canonical:
+  instructions: AGENTS.md # the only always-loaded instruction file
+  skills: .agents/skills # Agent Skills spec directories
+policy:
+  symlinks: auto # auto | never | always (auto = matrix × platform probe)
+  onConflict: quarantine # quarantine | ask (delete is never a default)
+  managedBlocks:
+    agentsMd: true # routing block appended to the canonical instructions
+# projections:                     # optional pins per harness, e.g. claude: { skills: copy }
+# adapters:
+#   agents: []                     # opt-in generated agents: { source: .claude/agents/x.md, to: [opencode] }
+decisions:
+  MODIFY:AGENTS.md:block: approve

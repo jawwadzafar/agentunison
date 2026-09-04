@@ -1,0 +1,39 @@
+harness: gemini
+displayName: Gemini CLI
+versionsVerified: []
+optIn: true   # not enabled as a target by default: GEMINI.md shim behavior unverified on this machine
+detect:
+  binaries: [gemini]
+  versionArgs: ["--version"]
+  projectDirs: [.gemini]
+  files: [GEMINI.md]
+surfaces:
+  instructions:
+    root: [GEMINI.md]
+    nestedName: GEMINI.md
+  skills:
+    dirs: [.gemini/skills, .agents/skills]
+  agents:
+    dirs: [.gemini/agents]
+    format: gemini-md
+  commands:
+    dirs: [.gemini/commands]
+  settings:
+    files: [.gemini/settings.json]
+instructions:
+  readsAgentsMd: { value: false, evidence: doc, checkedOn: 2026-09-04, note: "only via context.fileName in .gemini/settings.json (AgentConcord does not edit settings)" }
+  importSyntax: { value: "@{path}", example: "@./AGENTS.md", maxDepth: 5, evidence: doc, checkedOn: 2026-09-04, note: "relative form shown as @./x.md; bare @AGENTS.md unverified" }
+  followsSymlink: { value: null, evidence: none, checkedOn: 2026-09-04 }
+  shimSafeWhenLiteral: true
+skills:
+  readsCanonical: { value: true, evidence: doc, checkedOn: 2026-09-04, note: ".agents/skills documented alias of .gemini/skills" }
+  readsClaudeSkills: { value: false, evidence: doc, checkedOn: 2026-09-04 }
+  followsDirSymlink: { value: null, evidence: none, checkedOn: 2026-09-04, note: "Gemini offers `gemini skills link` instead" }
+  followsEntrySymlink: { value: null, evidence: none, checkedOn: 2026-09-04 }
+  dedup: unknown
+verify:
+  live:
+    kind: list-skills
+    command: [gemini, skills, list, --all]
+    timeoutMs: 45000
+    cost: none

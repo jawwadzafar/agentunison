@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.agentconcord/local/
+*.log
+.DS_Store

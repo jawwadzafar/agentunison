@@ -1,0 +1,39 @@
+harness: cursor
+displayName: Cursor (IDE + CLI)
+versionsVerified: []
+detect:
+  binaries: [agent, cursor-agent]
+  versionArgs: ["--version"]
+  projectDirs: [.cursor]
+  files: [.cursorrules]
+surfaces:
+  instructions:
+    root: [AGENTS.md]
+    nestedName: AGENTS.md
+    alsoReadsLiteral: [CLAUDE.md]
+    legacyRoot: [.cursorrules]
+  skills:
+    dirs: [.cursor/skills, .agents/skills, .claude/skills]
+  agents:
+    dirs: [.cursor/agents]
+    format: cursor-md
+  rules:
+    dirs: [.cursor/rules]
+  commands:
+    dirs: [.cursor/commands]
+  hooks:
+    files: [.cursor/hooks.json]
+instructions:
+  readsAgentsMd: { value: true, evidence: doc, checkedOn: 2026-09-04, note: "root + nested (IDE); CLI reads AGENTS.md and CLAUDE.md at root" }
+  importSyntax: { value: null, evidence: doc, checkedOn: 2026-09-04 }
+  followsSymlink: { value: null, evidence: none, checkedOn: 2026-09-04 }
+skills:
+  readsCanonical: { value: true, evidence: doc, checkedOn: 2026-09-04, note: ".agents/skills anywhere in the repository" }
+  readsClaudeSkills: { value: true, evidence: doc, checkedOn: 2026-09-04 }
+  followsDirSymlink: { value: null, evidence: none, checkedOn: 2026-09-04 }
+  followsEntrySymlink: { value: null, evidence: none, checkedOn: 2026-09-04 }
+  dedup: unknown
+verify:
+  live:
+    kind: none
+    note: "no documented non-interactive listing of loaded rules/skills"
