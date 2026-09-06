@@ -61,7 +61,8 @@ Gemini shim opt-in; commands/exit codes trimmed; Windows CI.
 ### Validation gaps (honest)
 - Windows: junction/copy fallbacks and CRLF hashing are implemented and exercised via policy
   override and CRLF fixtures on macOS; native Windows CI (`windows-latest` in `.github/workflows/ci.yml`)
-  has not run yet (repo not pushed).
+  first ran 2026-09-04 (run `33852363641`): ubuntu/macos green, windows failed 7 tests — see
+  "Windows CI triage" below.
 - Copilot, Cursor, Gemini: matrix entries + structural projections only; no binaries here except
   Cursor's `agent` (no non-interactive listing) — reported as `structural-only` / `not-installed`.
 - Gemini `GEMINI.md` shim (`@./AGENTS.md`) unverified → target is opt-in.
@@ -83,6 +84,34 @@ Rename covered package/bin, manifest `agentunison.yaml`, `.agentunison/`, marker
 `<!-- agentunison:begin -->`, env vars `AGENTUNISON_*`, all docs and tests; the product repo was
 unmanaged with the old tool and re-initialized with the new one; 34 tests pass; dogfood verify OK.
 Task board and verification runbook added: `docs/TASKS.md`, `docs/VERIFICATION.md`, `CONTRIBUTING.md`.
+
+## Windows CI triage (2026-09-04)
+First Windows run (`33852363641`) failed 7 tests, one shared root cause, and it was test-side,
+not product-side: on GitHub's windows-latest the in-repo probe reports `symlinks: false` (no
+symlink privilege without Developer Mode), the policy then takes its designed conservative
+branch — per-skill managed copies (all link-following evidence is `platforms: [posix]`; junction
+stays an apply-time fallback per 003 §4) — while the tests asserted posix link outcomes
+unconditionally (`SYMLINK:` op ids, `isLink`, relative `readlink` targets, `mechanism: link` in
+the ledger, `unlinkSync` on the link).
+
+Fixes (branch `t-01-windows-ci-green`):
+- Tests branch on the probe result (`canSymlink(root)` helper), not `process.platform`, so a
+  Developer-Mode Windows box still exercises the link path: `clean.test.ts` (init tree, tamper,
+  uninstall), `messy.test.ts` (plan ops, converge, partial approval), `safety.test.ts`
+  (empty-dir whole-dir link vs per-skill copies).
+- New `test/windows.test.ts`: simulates the symlink-less probe on every host and locks the
+  degradation contract — copy plan cites the probe, no `SYMLINK` ops, local state records
+  `mechanism: copy` while the committed ledger stays machine-fact-free, verify clean, in-place
+  copy edit → BACKPORT drift; a junction-style absolute link target passes verify only when
+  local state records `junction` (drift otherwise); a committed link materialized as a text file
+  (`core.symlinks=false` checkout) reports `environment`, never `drift`; copy-apply is idempotent.
+- CI dogfood step now runs `scripts/dogfood-verify.mjs`: clean verify exits 0; an `environment`-only
+  report (symlinkless checkout of the committed `.claude/skills` link) is tolerated with a loud
+  note; anything else (drift, block-damaged, invariant, spec) fails the job. Verified all three
+  paths against a scratch clone.
+
+Still honest: no Windows machine has exercised `doctor` or a real junction with harnesses
+installed; no `platforms: [win32]` matrix evidence exists yet (T-05 remains blocked on that).
 
 ## Remaining risks / follow-ups
 - Symlink-hostile checkouts: `verify` reports `environment` with the fix; `apply` warns

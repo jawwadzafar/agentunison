@@ -35,6 +35,7 @@ Size: S (< 2 h) · M (half day) · L (1–2 days).
 - **Acceptance:** three green jobs; the `dogfood — verify` step passes on Windows (expect `environment` issues if the runner checks out without symlink support — that is a finding, see T-05).
 - **Validate:** `gh run list --limit 3`, `gh run view <id> --log-failed`.
 - **Verify:** V-08.
+- **Progress (2026-09-04):** first run `33852363641`: ubuntu ✓ macos ✓ windows ✗ (7 tests) + dogfood would fail on the materialized symlink. Fixes on branch `t-01-windows-ci-green`: platform-honest test assertions (branch on the probe, not `process.platform`), new `test/windows.test.ts`, and the dogfood step now runs `scripts/dogfood-verify.mjs` (fails on any non-environment issue, tolerates environment-only reports with a loud note). Awaiting a green run.
 
 ### T-02 · Publish `agentunison` to npm — `BLOCKED(T-01)` · S · owner
 - **Goal:** `npx agentunison init` works from a clean machine.
@@ -64,6 +65,7 @@ Size: S (< 2 h) · M (half day) · L (1–2 days).
 - **Steps:** run the suite on Windows CI → collect failures → fix; add `test/windows.test.ts` that asserts fallback recording when `platform.symlinks === false`.
 - **Acceptance:** CI green on windows; `doctor` shows `symlinks=false junctions=true` on that runner; a checkout with `core.symlinks=false` of a repo with a committed link yields `verify` exit 4 with code `environment` and the documented fix text.
 - **Verify:** V-08, V-09.
+- **Progress (2026-09-04):** root cause of the 7 Windows failures was test-side: the policy's conservative copy degradation on symlink-less probes is by design (all link evidence is `platforms: [posix]`; junction stays an apply-time fallback per 003 §4). `test/windows.test.ts` now covers the degradation end-to-end on every host (probe override → copy plan → recorded local mechanism → verify clean; junction-tolerance; materialized-link `environment`). **Still open:** `doctor` output + a real junction follow-verification on a Windows box with harnesses installed (needed before any `platforms: [win32]` matrix evidence can be recorded — do not add it without that evidence).
 
 ### T-06 · Precondition drift for actions with empty preconditions — `OPEN` · S
 - **Goal:** `ADD` shim after MOVE and dependent links carry a precondition on their *dependency's result* (destination must be missing at apply time is impossible to pre-check; instead verify at execution that the path is still missing and refuse otherwise).

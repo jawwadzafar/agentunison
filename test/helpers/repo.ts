@@ -42,6 +42,11 @@ export function isLink(root: string, rel: string): boolean {
   try { return fs.lstatSync(path.join(root, ...rel.split('/'))).isSymbolicLink(); } catch { return false; }
 }
 
+/** The honest branch condition for link-vs-copy assertions: what the in-repo probe reports. */
+export function canSymlink(root: string): boolean {
+  return buildCtx(root).platform.symlinks;
+}
+
 /** Write a manifest with the given targets (like init would) and return a fresh ctx. */
 export function withManifest(root: string, targets: HarnessId[] = ['claude', 'codex', 'opencode'], extra: (m: ReturnType<typeof defaultManifest>) => void = () => {}): Ctx {
   const m = defaultManifest(targets, 'abcdef12');

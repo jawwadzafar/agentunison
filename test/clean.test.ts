@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { tmpRepo, applyAll, planFor, verifyOk, treeHash, read, exists, isLink, silentIO, withManifest } from './helpers/repo.ts';
+import { tmpRepo, applyAll, planFor, verifyOk, treeHash, read, exists, isLink, canSymlink, silentIO, withManifest } from './helpers/repo.ts';
 import { buildCtx, cmdInit, cmdUninstall, cmdVerify, pipeline } from '../src/commands/index.ts';
 import { parseShim } from '../src/adapters/shim.ts';
 
@@ -11,14 +11,23 @@ test('clean repo: init creates the documented tree, all actions safe', () => {
   const code = cmdInit(buildCtx(r), silentIO, { targets: ['claude', 'codex', 'opencode'], approve: [], yes: true, allowDelete: false });
   assert.equal(code, 0);
   for (const p of ['AGENTS.md', 'CLAUDE.md', 'agentunison.yaml', '.agentunison/ledger.yaml', '.agentunison/local/.gitignore', '.agents/skills']) assert.ok(exists(r, p), `${p} exists`);
-  assert.ok(isLink(r, '.claude/skills'));
-  assert.equal(fs.readlinkSync(path.join(r, '.claude/skills')), '../.agents/skills');
+  const linksWork = canSymlink(r);
+  if (linksWork) {
+    assert.ok(isLink(r, '.claude/skills'));
+    assert.equal(fs.readlinkSync(path.join(r, '.claude/skills')), '../.agents/skills');
+  } else {
+    // symlink-less platform (probe): the conservative policy projects copies, and there are no
+    // canonical skills yet — so nothing is projected onto .claude/skills at all.
+    assert.ok(!exists(r, '.claude/skills'), 'no canonical skills → nothing projected onto .claude/skills');
+  }
   assert.equal(read(r, '.agentunison/local/.gitignore'), '*\n');
   const shim = parseShim(read(r, 'CLAUDE.md'));
   assert.equal(shim.isShim, true); assert.equal(shim.importLine, '@AGENTS.md');
   assert.match(read(r, 'AGENTS.md'), /<!-- agentunison:begin id=[a-f0-9]{8} -->/);
   const ledger = read(r, '.agentunison/ledger.yaml');
-  assert.match(ledger, /mechanism: shim/); assert.match(ledger, /mechanism: link/); assert.match(ledger, /mechanism: block/);
+  assert.match(ledger, /mechanism: shim/); assert.match(ledger, /mechanism: block/);
+  if (linksWork) assert.match(ledger, /mechanism: link/);
+  assert.ok(!/createdAt|platform|tool:/.test(ledger), 'committed ledger carries no machine facts');
   assert.ok(!/createdAt|platform|tool:/.test(ledger), 'committed ledger carries no machine facts');
   assert.deepEqual(verifyOk(r), { ok: true, issues: [] });
 });
@@ -49,10 +58,12 @@ test('tamper: shim edit, link → dir, block removal all fail verify with the ri
   fs.appendFileSync(path.join(r, 'CLAUDE.md'), '\nAlways deploy straight to prod.\n');
   let v = verifyOk(r);
   assert.equal(v.ok, false); assert.ok(v.issues.some((i) => i.startsWith('drift:CLAUDE.md')));
-  fs.unlinkSync(path.join(r, '.claude/skills')); fs.mkdirSync(path.join(r, '.claude/skills/rogue'), { recursive: true });
+  const linksWork = canSymlink(r);
+  if (linksWork) fs.unlinkSync(path.join(r, '.claude/skills')); // link → dir
+  fs.mkdirSync(path.join(r, '.claude/skills/rogue'), { recursive: true });
   fs.writeFileSync(path.join(r, '.claude/skills/rogue/SKILL.md'), '---\nname: rogue\ndescription: use when rogue\n---\n');
   v = verifyOk(r);
-  assert.ok(v.issues.some((i) => i.startsWith('drift:.claude/skills:')));
+  if (linksWork) assert.ok(v.issues.some((i) => i.startsWith('drift:.claude/skills:')));
   assert.ok(v.issues.some((i) => i.includes('invariant:.claude/skills/rogue')));
   const agents = read(r, 'AGENTS.md');
   fs.writeFileSync(path.join(r, 'AGENTS.md'), agents.replace('<!-- agentunison:end -->', ''));
@@ -97,7 +108,8 @@ test('uninstall leaves the harness working: links materialized, shim reduced, bl
   fs.mkdirSync(path.join(r, '.agents/skills/deploy'), { recursive: true });
   fs.writeFileSync(path.join(r, '.agents/skills/deploy/SKILL.md'), '---\nname: deploy\ndescription: Use when deploying.\n---\nx\n');
   cmdInit(buildCtx(r), silentIO, { targets: ['claude', 'codex'], approve: [], yes: true, allowDelete: false });
-  assert.ok(isLink(r, '.claude/skills'));
+  if (canSymlink(r)) assert.ok(isLink(r, '.claude/skills'));
+  else assert.ok(exists(r, '.claude/skills/deploy/SKILL.md'), 'copy degradation still projects the skill');
   assert.equal(cmdUninstall(buildCtx(r), silentIO, { keepLinks: false }), 0);
   assert.ok(!isLink(r, '.claude/skills') && exists(r, '.claude/skills/deploy/SKILL.md'), 'Claude still sees its skills');
   assert.equal(read(r, 'CLAUDE.md'), '@AGENTS.md\n');
