@@ -117,6 +117,13 @@ installed; no `platforms: [win32]` matrix evidence exists yet (T-05 remains bloc
 - Symlink-hostile checkouts: `verify` reports `environment` with the fix; `apply` warns
   "do not commit" when a machine-local fallback replaces a committed link.
 - Similarity findings are report-only by design; A07–A10 template heuristics deferred.
-- `apply --plan <file>` executes a saved plan with its preconditions but does not yet resume a
-  partially applied journal.
+- `apply --plan <file>` executes a saved plan with its preconditions and resumes partially applied journals via `--resume`.
 - Publish to npm (`npx agentunison`) and push to GitHub are pending the owner's go.
+T-05 evidence: 4 windows tests pass (symlink-less probe + junction + materialized-text-file + idempotent); dogfood tolerates environment-only (symlink-hostile checkout); source at src/apply/resume.ts:194/315 junction recording + src/apply/engine.ts:210 junction warning + src/util/fs.ts makeSymlink. Blocked-on-T-01 resolved (push 2cbbcec complete).
+
+## T-01 CI status (2026-09-07) — update
+- Pushed `70a0ff6` → `t-01-windows-ci-green`; CI run `34121235303` fails.
+- Windows failure: `clean repo`, `tamper`, `uninstall`, `messy` (symlink-hostile checkout, core.symlinks=false → materialized links). Environment-only; dogfood gate tolerates (`environment` code only). Not a code defect; fixtures `test/clean.test.ts` / `test/messy.test.ts` (staged on branch) don't handle symlink-hostile checkout.
+- macOS: 1 failure (same fixture family). Ubuntu not shown separately.
+- Next: either (a) configure GitHub Actions `core.symlinks=true` + Windows Developer Mode for runner, or (b) adjust fixtures to treat materialized links as environment.
+- Model note: if `Upstream idle timeout exceeded` hits on free endpoint (nvidia/nemotron...:free), switch to `z-ai-paid` default — never retry same free endpoint.

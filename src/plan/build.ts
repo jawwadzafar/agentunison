@@ -119,7 +119,8 @@ export function buildPlan(ctx: Ctx, inv: Inventory, findings: Finding[], decisio
         add({ op: 'REPAIR', risk: 'review', kind: 'instructions', path: file, harness: d.harness, mechanism: 'shim', content, reason: `${file} managed part was edited; restore the pinned shim (harness-specific section kept)`, preconditions: [pre(file)], diff: unifiedDiff(text, content, file) });
       }
     } else if (it.type === 'symlink') {
-      add({ op: 'ADOPT-MANAGED', risk: 'review', kind: 'instructions', path: file, harness: d.harness, mechanism: 'shim', content: expected, reason: `${file} is a symlink (→ ${it.resolvesTo}); replace it with a regular-file shim (symlinked instruction files break on symlink-hostile checkouts)`, preconditions: [pre(file)], evidence: d.evidence });
+      const symlinkText = readTextIfFile(abs(ctx.root, file)) ?? '';
+      add({ op: 'ADOPT-MANAGED', risk: 'review', kind: 'instructions', path: file, harness: d.harness, mechanism: 'shim', content: expected, reason: `${file} is a symlink (→ ${it.resolvesTo}); replace it with a regular-file shim (symlinked instruction files break on symlink-hostile checkouts)`, preconditions: [pre(file)], diff: unifiedDiff(symlinkText ?? '', expected ?? '', file), evidence: d.evidence });
     }
   }
 
@@ -128,6 +129,18 @@ export function buildPlan(ctx: Ctx, inv: Inventory, findings: Finding[], decisio
   if (!canonSkillsRoot) add({ op: 'ADD', risk: 'safe', kind: 'skills-root', path: canonSkills, reason: `create the canonical skills directory`, preconditions: [pre(canonSkills)] });
   const canonicalSkillNames = new Map<string, InventoryItem>();
   for (const s of inv.items) if (s.kind === 'skill' && s.type === 'dir' && path.posix.dirname(s.path) === canonSkills) canonicalSkillNames.set(s.name!, s);
+  // T-07: case-insensitive collisions (e.g. Deploy / deploy on Linux → same dir on macOS/Windows)
+  const namesLower = new Map<string, string[]>();
+  for (const [n] of canonicalSkillNames) {
+    const l = n.toLowerCase();
+    const arr = namesLower.get(l);
+    if (arr) arr.push(n); else namesLower.set(l, [n]);
+  }
+  for (const [l, names] of namesLower) if (names.length > 1) {
+    for (const n of names) {
+      add({ op: 'PRESERVE', risk: 'safe', kind: 'skill', path: canonicalSkillNames.get(n)!.path, reason: `case-insensitive collision: '${names.join(" / ")}' can only exist once in a case-insensitive filesystem (A16); resolve manually`, preconditions: [] });
+    }
+  }
 
   for (const s of inv.items.filter((i) => i.kind === 'skill' && i.type === 'dir' && path.posix.dirname(i.path) !== canonSkills)) {
     if (s.cls === 'vendored' || s.cls === 'foreign' || s.cls === 'managed') continue;
@@ -142,6 +155,21 @@ export function buildPlan(ctx: Ctx, inv: Inventory, findings: Finding[], decisio
       add({ op: 'QUARANTINE', risk: 'review', kind: 'skill', path: s.path, reason: `identical duplicate of ${existing.path}`, preconditions: [pre(s.path)] });
     } else {
       add({ op: 'QUARANTINE', risk: 'review', kind: 'skill', path: s.path, detail: 'conflict', reason: `CONFLICT: '${s.name}' differs from ${existing.path}. Approving quarantines this copy and keeps the canonical; to keep this one instead, quarantine the canonical manually and re-plan`, preconditions: [pre(s.path), pre(existing.path)] });
+    }
+  }
+
+  // T-07: case-insensitive collisions (e.g. my-skill / My-skill on Linux → same dir on macOS/Windows).
+  // Run on inventory names BEFORE lint/canonical-collection so lint-skipped skills are still caught.
+  {
+    const movingSkills = inv.items.filter((i) => i.kind === 'skill' && i.type === 'dir' && path.posix.dirname(i.path) !== canonSkills && i.cls !== 'vendored' && i.cls !== 'foreign' && i.cls !== 'managed');
+    const movingLower = new Map<string, typeof movingSkills>();
+    for (const s of movingSkills) {
+      const l = s.name!.toLowerCase();
+      const arr = movingLower.get(l);
+      if (arr) arr.push(s); else movingLower.set(l, [s]);
+    }
+    for (const [, list] of movingLower) if (list.length > 1 && new Set(list.map((s) => s.name!)).size > 1) {
+      for (const s of list) add({ op: 'PRESERVE', risk: 'safe', kind: 'skill', path: s.path, reason: `case-insensitive collision: ${list.map((x) => `"${x.name}"`).join(' / ')} can only exist once in case-insensitive filesystem (A16); resolve manually`, preconditions: [] });
     }
   }
 
@@ -202,10 +230,25 @@ export function buildPlan(ctx: Ctx, inv: Inventory, findings: Finding[], decisio
         const entryLed = ctx.ledger.managed.find((e) => e.path === p);
         const target = path.posix.relative(nativeDir, `${canonSkills}/${name}`);
         if (d.mechanism === 'symlink-entries') {
+          // T-21: mechanism switch — ledger says copy, decision says link → DELETE copy then SYMLINK
+          if (entryLed?.mechanism === 'copy') {
+            add({ op: 'DELETE', risk: 'review', kind: 'skill', path: p, harness: d.harness, reason: `switch mechanism: managed copy → symlink`, preconditions: [pre(p)] });
+            const cur = it?.sha256, canonHash = canonicalSkillNames.get(name)?.sha256;
+            if (cur && canonHash && cur !== canonHash && cur !== entryLed.sha256) add({ op: 'BACKPORT', risk: 'review', kind: 'skill', path: `${canonSkills}/${name}`, source: p, reason: `managed copy ${p} was edited in place before switch; backport edits to canonical`, preconditions: [pre(`${canonSkills}/${name}`)] });
+            add({ op: 'SYMLINK', risk: 'review', kind: 'skill', path: p, harness: d.harness, mechanism: 'link', target, reason: `replacing managed copy with symlink (mechanism switch)`, preconditions: [], dependsOn: actions.filter((a) => a.path === p && a.op === 'DELETE').map((a) => a.id), evidence: d.evidence, degradation: d.degradation });
+            continue;
+          }
           if (it?.type === 'symlink' && it.resolvesTo === `${canonSkills}/${name}`) { if (!entryLed) add({ op: 'ADOPT-MANAGED', risk: 'review', kind: 'skill', path: p, harness: d.harness, mechanism: 'link', target, reason: 'existing correct link, not yet managed', preconditions: [pre(p)] }); continue; }
           if (it && !isPending) { if (it.cls !== 'managed') add({ op: 'PRESERVE', risk: 'safe', kind: 'skill', path: p, reason: `occupied by ${it.type} (${it.cls}); no link created`, preconditions: [] }); continue; }
           add({ op: 'SYMLINK', risk: isPending ? 'review' : 'safe', kind: 'skill', path: p, harness: d.harness, mechanism: 'link', target, detail: isPending ? 'after-adoption' : undefined, reason: `${d.reason}${isPending ? ' (after the prerequisite move/adopt/quarantine above)' : ''}`, preconditions: isPending ? [] : [pre(p)], evidence: d.evidence, degradation: d.degradation, ...(deps.length ? { dependsOn: deps } : {}) });
         } else {
+          // T-21: mechanism switch — ledger says link, decision says copy → DELETE link then COPY
+          if (entryLed?.mechanism === 'link') {
+            add({ op: 'DELETE', risk: 'review', kind: 'skill', path: p, harness: d.harness, reason: `switch mechanism: managed symlink → copy`, preconditions: [pre(p)] });
+            const backportDeps = actions.filter((a) => a.path === p && a.op === 'DELETE').map((a) => a.id);
+            add({ op: 'COPY', risk: 'review', kind: 'skill', path: p, source: `${canonSkills}/${name}`, harness: d.harness, mechanism: 'copy', reason: `replacing managed symlink with copy (mechanism switch)`, preconditions: [pre(`${canonSkills}/${name}`)], dependsOn: backportDeps, evidence: d.evidence, degradation: d.degradation });
+            continue;
+          }
           if (entryLed?.mechanism === 'copy') {
             const cur = it?.sha256, canonHash = canonicalSkillNames.get(name)?.sha256;
             if (cur && canonHash && cur !== canonHash && cur !== entryLed.sha256) add({ op: 'BACKPORT', risk: 'review', kind: 'skill', path: `${canonSkills}/${name}`, source: p, reason: `managed copy ${p} was edited in place; copy the edit back to the canonical skill`, preconditions: [pre(p), pre(`${canonSkills}/${name}`)] });
@@ -228,7 +271,7 @@ export function buildPlan(ctx: Ctx, inv: Inventory, findings: Finding[], decisio
     if (base !== undefined) {
       const loc = findBlock(base);
       if (loc === 'damaged') {
-        add({ op: 'REPAIR', risk: 'review', kind: 'instructions', path: canonInstr, detail: 'block', content: undefined, reason: `managed block markers in ${canonInstr} are damaged (duplicate or unpaired); fix them by hand, then re-plan`, preconditions: [pre(canonInstr)] });
+        add({ op: 'REPAIR', risk: 'review', kind: 'instructions', path: canonInstr, detail: 'block', content: undefined, reason: `managed block markers in ${canonInstr} are damaged (duplicate or unpaired); fix them by hand, then re-plan`, preconditions: [pre(canonInstr)], diff: '' });
       } else if (!loc || loc.text !== block) {
         const next = upsertBlock(base, block);
         const existingIdx = actions.findIndex((a) => a.path === canonInstr && (a.op === 'MODIFY' || a.op === 'ADD'));
@@ -255,6 +298,20 @@ export function buildPlan(ctx: Ctx, inv: Inventory, findings: Finding[], decisio
     if (!moved) break;
   }
   const pending = { review: actions.filter((a) => a.risk === 'review' && !a.preApproved).length, destructive: actions.filter((a) => a.risk === 'destructive' && !a.preApproved).length };
+  // T-08: ledger rename — adopted skill missing but a skill dir with matching content exists
+  for (const e of ctx.ledger.managed) {
+    if (e.mechanism === 'adopted' && e.origin) {
+      const a = abs(ctx.root, e.path);
+      if (pathType(a) === 'missing') {
+        const originItem = inv.items.find((i) => i.path === e.origin && i.sha256)
+        if (originItem) {
+          const moved = inv.items.find((i) => i.kind === 'skill' && i.type === 'dir' && path.posix.dirname(i.path) === canonSkills && i.sha256 === originItem.sha256 && i.path !== e.path);
+          if (moved) add({ op: 'MODIFY', risk: 'review', kind: 'skill', path: '.agentunison/local/ledger.yaml', reason: `adopted skill moved: ${e.path} → ${moved.path} (same content hash); approve to update ledger`, preconditions: [pre('.agentunison/local/ledger.yaml')], detail: `repoint-entry:${e.path} -> ${moved.path}` });
+        }
+      }
+    }
+  }
+
   return { schema: 1, root: ctx.root, actions, findings, pending };
 }
 

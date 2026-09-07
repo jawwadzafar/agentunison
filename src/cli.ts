@@ -24,6 +24,7 @@ Options
   --approve <ids|all>     init/apply: approve review actions by id
   --allow-delete          apply: additionally required for DELETE actions
   --plan <file>           apply: execute a saved plan (from \`plan --json\`) exactly, with its preconditions
+  --resume                apply: finish or roll back a partially-applied plan (run that was killed); use with --approve and/or --plan
   --diff                  plan: show diffs for MODIFY/REPAIR
   --live                  verify: run real-harness probes (never gates unless a probe fails)
   --allow-api-calls       verify --live: allow probes that cost a model call (Claude Code)
@@ -42,7 +43,7 @@ export async function main(argv: string[]): Promise<number> {
       allowPositionals: true,
       options: {
         cwd: { type: 'string' }, json: { type: 'boolean', default: false }, targets: { type: 'string' }, approve: { type: 'string' },
-        'allow-delete': { type: 'boolean', default: false }, plan: { type: 'string' }, diff: { type: 'boolean', default: false },
+        'allow-delete': { type: 'boolean', default: false }, plan: { type: 'string' }, resume: { type: 'boolean' }, reconsider: { type: 'string' }, diff: { type: 'boolean', default: false },
         live: { type: 'boolean', default: false }, 'allow-api-calls': { type: 'boolean', default: false }, 'keep-links': { type: 'boolean', default: false },
         yes: { type: 'boolean', default: false }, help: { type: 'boolean', short: 'h', default: false },
       },
@@ -69,8 +70,8 @@ export async function main(argv: string[]): Promise<number> {
       }
       case 'inspect': return cmdInspect(ctx, io);
       case 'audit': return cmdAudit(ctx, io);
-      case 'plan': return cmdPlan(ctx, io, { diff: values.diff ?? false });
-      case 'apply': return cmdApply(ctx, io, { approve, allowDelete: values['allow-delete'] ?? false, ...(values.plan ? { planFile: values.plan } : {}) });
+      case 'plan': return cmdPlan(ctx, io, { diff: values.diff ?? false, ...(values.reconsider ? { reconsider: values.reconsider } : {}) });
+      case 'apply': return cmdApply(ctx, io, { approve, allowDelete: values['allow-delete'] ?? false, resume: values['resume'] ?? false, ...(values.plan ? { planFile: values.plan } : {}) });
       case 'verify': return cmdVerify(ctx, io, { live: values.live ?? false, allowApiCalls: values['allow-api-calls'] ?? false });
       case 'doctor': return cmdDoctor(ctx, io);
       case 'uninstall': return cmdUninstall(ctx, io, { keepLinks: values['keep-links'] ?? false });

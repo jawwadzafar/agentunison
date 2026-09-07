@@ -71,7 +71,17 @@ export function verifyStructural(ctx: Ctx, inv: Inventory): VerifyReport {
         break;
       }
       case 'adopted': {
-        if (t === 'missing') push({ code: 'drift', path: e.path, message: `adopted skill missing (moved or deleted?) — origin was ${e.origin ?? '?'}`, fix: 'remove the ledger entry if the removal was intended' });
+        if (t === 'missing') {
+          // T-08: try to identify a rename.  Look for any skill dir under canonSkills with the
+          // same content (tree hash matches the ledger origin) and call it out as a likely move.
+          const cand = e.origin ? (() => {
+            const originItem = inv.items.find((i) => i.path === e.origin && i.sha256);
+            if (!originItem) return undefined;
+            return inv.items.find((i) => i.kind === 'skill' && i.type === 'dir' && i.path !== e.path && i.sha256 === originItem.sha256 && path.posix.dirname(i.path) === path.posix.dirname(e.path));
+          })() : undefined;
+          const note = cand ? `canonical moved: ${e.path} → likely ${cand.path} (same content hash)` : `adopted skill missing (moved or deleted?) — origin was ${e.origin ?? '?'}`;
+          push({ code: 'drift', path: e.path, message: note, fix: cand ? `re-run \`agentunison plan\` — a MODIFY ledger action is proposed; approve to re-point to ${cand.path}` : 'remove the ledger entry if the removal was intended' });
+        }
         break;
       }
       case 'block': {

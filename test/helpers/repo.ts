@@ -7,7 +7,7 @@ import { applyPlan } from '../../src/apply/engine.ts';
 import { verifyStructural } from '../../src/verify/structural.ts';
 import { scanInventory } from '../../src/inventory/scan.ts';
 import { defaultManifest, renderManifest, saveManifestDecisions } from '../../src/model/manifest.ts';
-import type { HarnessId, Plan } from '../../src/model/types.ts';
+import type { HarnessId, Plan, Inventory, LedgerEntry } from '../../src/model/types.ts';
 import type { Ctx } from '../../src/model/context.ts';
 
 export const FIXTURES = path.resolve(import.meta.dirname, '..', 'fixtures');
@@ -42,11 +42,6 @@ export function isLink(root: string, rel: string): boolean {
   try { return fs.lstatSync(path.join(root, ...rel.split('/'))).isSymbolicLink(); } catch { return false; }
 }
 
-/** The honest branch condition for link-vs-copy assertions: what the in-repo probe reports. */
-export function canSymlink(root: string): boolean {
-  return buildCtx(root).platform.symlinks;
-}
-
 /** Write a manifest with the given targets (like init would) and return a fresh ctx. */
 export function withManifest(root: string, targets: HarnessId[] = ['claude', 'codex', 'opencode'], extra: (m: ReturnType<typeof defaultManifest>) => void = () => {}): Ctx {
   const m = defaultManifest(targets, 'abcdef12');
@@ -57,10 +52,10 @@ export function withManifest(root: string, targets: HarnessId[] = ['claude', 'co
   return buildCtx(root);
 }
 
-export function planFor(root: string): { ctx: Ctx; plan: Plan } {
+export function planFor(root: string): { ctx: Ctx; plan: Plan; inv: Inventory } {
   const ctx = buildCtx(root);
-  const { plan } = pipeline(ctx);
-  return { ctx, plan };
+  const { inv, plan } = pipeline(ctx);
+  return { ctx, plan, inv };
 }
 
 export function applyAll(root: string, approve: 'all' | string[] = 'all'): ReturnType<typeof applyPlan> {

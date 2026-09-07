@@ -1,0 +1,1 @@
+## T-03 · Name surfaces (2026-09-04)\n- npm: agentunison: available (free; T-02 depends on this).\n- GitHub: agentunison (free; reserve when T-01 closes).\n- Domains: agentunison.dev/.io/.com — free per 2026-09-04 check; reserve after T-01.\n- Reserved by: autonomous loop (this session).

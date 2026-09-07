@@ -132,6 +132,20 @@ export function runAudit(ctx: Ctx, inv: Inventory): Finding[] {
     if (lit.includes(s.path)) out.push({ id: `A15:${s.path}:${h}`, rule: 'A15', severity: 'info', message: `${ctx.matrix[h].displayName} reads ${s.path} literally alongside ${canonInstr} (a few duplicated lines; harmless)`, paths: [s.path] });
   }
 
+  // A16 — case-insensitive collisions: Deploy / deploy → same dir on macOS/Windows
+  const byNameLower = new Map<string, InventoryItem[]>();
+  for (const s of skills) {
+    const l = s.name!.toLowerCase();
+    const arr = byNameLower.get(l);
+    if (arr) arr.push(s); else byNameLower.set(l, [s]);
+  }
+  for (const [l, list] of byNameLower) {
+    if (list.length < 2) continue;
+    const uniqueNames = new Set(list.map((s) => s.name!));
+    if (uniqueNames.size <= 1) continue; // exact duplicates (A04), not case collision
+    out.push({ id: `A16:${l}`, rule: 'A16', severity: 'high', message: `skill names ${list.map((s) => `"${s.name}"`).join(' / ')} differ only by case — on macOS/Windows they share a single directory entry; resolve the collision before planning`, paths: list.map((s) => s.path) });
+  }
+
   return out.sort((a, b) => sev(a.severity) - sev(b.severity) || (a.id < b.id ? -1 : 1));
 }
 

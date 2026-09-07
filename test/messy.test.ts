@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { messyRepo, withManifest, planFor, applyAll, verifyOk, treeHash, read, exists, isLink, canSymlink } from './helpers/repo.ts';
+import { messyRepo, withManifest, planFor, applyAll, verifyOk, treeHash, read, exists, isLink } from './helpers/repo.ts';
 import { scanInventory } from '../src/inventory/scan.ts';
 import { runAudit } from '../src/audit/rules.ts';
 import { applyPlan } from '../src/apply/engine.ts';
@@ -49,20 +49,19 @@ test('messy: plan proposes the right ops with review risk; safe subset is harmle
   assert.deepEqual(ops('MOVE'), ['.agents/skills/local-only']);
   assert.deepEqual(ops('ADOPT').sort(), ['.agents/skills/frontend-component', '.agents/skills/release']);
   assert.deepEqual(ops('QUARANTINE').sort(), ['.claude/skills/deploy', '.claude/skills/review']);
-  const linkOp = canSymlink(r) ? 'SYMLINK' : 'COPY'; // symlink-less platforms degrade to managed copies
-  assert.ok(plan.actions.filter((a) => a.op === linkOp).every((a) => a.path.startsWith('.claude/skills/')), 'per-skill projections, not a whole-dir link, because .claude/skills has content');
+  assert.ok(plan.actions.filter((a) => a.op === 'SYMLINK').every((a) => a.path.startsWith('.claude/skills/')), 'per-skill links, not a whole-dir link, because .claude/skills has content');
   assert.equal(ops('DELETE').length, 0, 'never a DELETE without a request');
   assert.ok(plan.actions.filter((a) => a.op === 'MODIFY').every((a) => a.risk === 'review'));
   assert.ok(plan.actions.some((a) => a.op === 'MODIFY' && a.path === 'AGENTS.md' && /Deploy notes/.test(a.content ?? '')), 'generic CLAUDE.md paragraph is adopted');
   assert.ok(plan.actions.some((a) => a.op === 'MODIFY' && a.path === 'CLAUDE.md' && /Claude specifics/.test(a.content ?? '')), 'Claude-specific paragraph stays in the shim');
-  // links/copies onto not-yet-existing canonical skills must depend on their creating action
-  const link = plan.actions.find((a) => a.op === linkOp && a.path === '.claude/skills/release')!;
+  // links onto not-yet-existing canonical skills must depend on their creating action
+  const link = plan.actions.find((a) => a.op === 'SYMLINK' && a.path === '.claude/skills/release')!;
   assert.ok(link.dependsOn?.includes('ADOPT:.agents/skills/release'));
   // safe-only apply: creates nothing dangling
   const res = applyAll(r, []);
   assert.ok(res.executed.every((a) => a.risk === 'safe'));
-  for (const a of res.executed) if (a.op === 'SYMLINK' || a.op === 'COPY') assert.ok(fs.existsSync(path.join(r, a.path)), `${a.path} must not dangle`);
-  assert.ok(res.skipped.some((s) => (s.action.op === 'SYMLINK' || s.action.op === 'COPY') && s.action.dependsOn?.length), 'dependent projections wait for their prerequisites');
+  for (const a of res.executed) if (a.op === 'SYMLINK') assert.ok(fs.existsSync(path.join(r, a.path)), `${a.path} must not dangle`);
+  assert.ok(res.skipped.some((s) => s.action.op === 'SYMLINK' && s.action.dependsOn?.length), 'dependent links wait for their prerequisites');
   assert.ok(exists(r, 'CLAUDE.md') && !parseShim(read(r, 'CLAUDE.md')).isShim, 'CLAUDE.md untouched without approval');
 });
 
@@ -73,15 +72,10 @@ test('messy: approve-all converges, verify is clean, re-plan is empty, quarantin
   assert.equal(res.refused, undefined);
   assert.equal(res.skipped.filter((s) => s.action.op !== 'PRESERVE').length, 0);
   // canonical skills
-  const linksWork = canSymlink(r);
   for (const n of ['deploy', 'review', 'local-only', 'release', 'frontend-component']) {
     assert.ok(exists(r, `.agents/skills/${n}/SKILL.md`), `${n} canonical`);
-    if (linksWork) {
-      assert.ok(isLink(r, `.claude/skills/${n}`), `${n} linked for Claude`);
-      assert.equal(fs.readlinkSync(path.join(r, '.claude/skills', n)), `../../.agents/skills/${n}`);
-    } else {
-      assert.ok(exists(r, `.claude/skills/${n}/SKILL.md`), `${n} materialized as a managed copy for Claude`);
-    }
+    assert.ok(isLink(r, `.claude/skills/${n}`), `${n} linked for Claude`);
+    assert.equal(fs.readlinkSync(path.join(r, '.claude/skills', n)), `../../.agents/skills/${n}`);
   }
   assert.match(read(r, '.agents/skills/review/SKILL.md'), /Canonical version/, 'conflict keeps the canonical');
   assert.match(read(r, '.agents/skills/release/SKILL.md'), /^---\nname: release\ndescription: Cut a release PR\./);
@@ -124,11 +118,9 @@ test('messy: apply refuses when the tree changed after planning (preconditions)'
 test('messy: partial approval only executes the approved chain', () => {
   const r = messyRepo();
   withManifest(r);
-  const second = canSymlink(r) ? 'SYMLINK:.claude/skills/release:after-adoption' : 'COPY:.claude/skills/release:after-adoption';
-  const res = applyAll(r, ['ADOPT:.agents/skills/release', second]);
-  assert.deepEqual(res.executed.filter((a) => a.risk !== 'safe').map((a) => a.id).sort(), ['ADOPT:.agents/skills/release', second]);
-  if (canSymlink(r)) assert.ok(isLink(r, '.claude/skills/release') && exists(r, '.agents/skills/release/SKILL.md'));
-  else assert.ok(exists(r, '.claude/skills/release/SKILL.md') && exists(r, '.agents/skills/release/SKILL.md'));
+  const res = applyAll(r, ['ADOPT:.agents/skills/release', 'SYMLINK:.claude/skills/release:after-adoption']);
+  assert.deepEqual(res.executed.filter((a) => a.risk !== 'safe').map((a) => a.id).sort(), ['ADOPT:.agents/skills/release', 'SYMLINK:.claude/skills/release:after-adoption']);
+  assert.ok(isLink(r, '.claude/skills/release') && exists(r, '.agents/skills/release/SKILL.md'));
   assert.ok(!isLink(r, '.claude/skills/local-only'), 'unapproved chain untouched');
   const v = verifyOk(r);
   assert.ok(v.issues.every((i) => i.startsWith('invariant:')), 'remaining issues are the known un-converged natives, not drift');

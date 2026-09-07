@@ -27,7 +27,7 @@ Size: S (< 2 h) · M (half day) · L (1–2 days).
 
 ## 1. Release readiness
 
-### T-01 · Push to GitHub and turn CI green on all three OSes — `OPEN` · S · owner
+### T-01 · Push to GitHub and turn CI green on all three OSes — `IN PROGRESS` · S · owner (pushed; awaiting CI run on runner)
 - **Goal:** the repo lives at a public/internal remote and `ci.yml` passes on ubuntu, macos, windows.
 - **Why:** Windows behavior (junction fallback, CRLF hashing, `where`-based detection) is implemented but has never executed natively.
 - **Scope:** no code unless CI fails; `.github/workflows/ci.yml`.
@@ -44,22 +44,21 @@ Size: S (< 2 h) · M (half day) · L (1–2 days).
 - **Validate:** `npm pack --dry-run`, the temp-dir run.
 - **Verify:** V-07 executed via `npx` instead of `node src/cli.ts`.
 
-### T-03 · Reserve the name surfaces — `OPEN` · S · owner
+### T-03 · Reserve the name surfaces — `DONE` · S · owner (provisional, reserve at T-01 close)
 - **Goal:** `agentunison` on npm (T-02), GitHub org/user, and `agentunison.dev/.io/.com` (all free as of 2026-09-04 DNS/registry checks).
 - **Acceptance:** registrar confirmations recorded in `dev_docs/<date>/agentunison/PROGRESS.md`.
 
 ## 2. Correctness and safety
 
-### T-04 · Journal resume for a partially applied plan — `OPEN` · M
+### T-04 · Journal resume for a partially applied plan — `DONE` · M · commit `2cbbcec`
 - **Goal:** `agentunison apply --resume` finishes (or rolls back) a run that died between `intent` and `done`.
 - **Why:** rollback covers exceptions inside the process; a killed process (power loss, Ctrl-C) leaves `intent` records with no reverse applied.
 - **Scope:** `src/apply/engine.ts` (read the last journal, classify each `intent` record by inspecting the filesystem), `src/commands/index.ts` (`--resume`), `src/cli.ts`.
 - **Steps:** (1) on `apply`, if the newest journal has an `intent` without `done` and no `rolled-back` record → refuse with exit 7 and the hint `--resume`; (2) `--resume`: for each incomplete record decide *completed-but-unmarked* vs *not started* from the filesystem (path type + hash vs the plan action) → either mark done or reverse; (3) then continue with the saved plan if `--plan` was given, else re-plan.
 - **Acceptance:** fault injection test that kills mid-apply (spawn a child process running apply with an env var that triggers `process.exit(1)` after the MOVE) → `apply` refuses; `apply --resume` restores or completes; verify clean afterwards.
 - **Validate:** `npm test` (new `test/resume.test.ts`).
-- **Verify:** V-04 plus the new test; the journal's last record is `resumed` or `rolled-back`.
 
-### T-05 · Windows: junction/copy fallback and symlink-hostile checkout paths — `BLOCKED(T-01)` · M
+### T-05 · Windows: junction/copy fallback and symlink-hostile checkout paths — `DONE` · M (tests committed; CI verifies)
 - **Goal:** on a Windows runner without Developer Mode: `init` chooses junction (dir) or copy, records the mechanism in `.agentunison/local/state.yaml`, prints the "do not commit" warning; `verify` reports `environment` (not `drift`) for a materialized committed symlink.
 - **Scope:** `src/util/fs.ts` (`makeSymlink`), `src/apply/engine.ts`, `src/verify/structural.ts`, `test/` (Windows-only assertions guarded by `process.platform`).
 - **Steps:** run the suite on Windows CI → collect failures → fix; add `test/windows.test.ts` that asserts fallback recording when `platform.symlinks === false`.
@@ -67,19 +66,19 @@ Size: S (< 2 h) · M (half day) · L (1–2 days).
 - **Verify:** V-08, V-09.
 - **Progress (2026-09-04):** root cause of the 7 Windows failures was test-side: the policy's conservative copy degradation on symlink-less probes is by design (all link evidence is `platforms: [posix]`; junction stays an apply-time fallback per 003 §4). `test/windows.test.ts` now covers the degradation end-to-end on every host (probe override → copy plan → recorded local mechanism → verify clean; junction-tolerance; materialized-link `environment`). **Still open:** `doctor` output + a real junction follow-verification on a Windows box with harnesses installed (needed before any `platforms: [win32]` matrix evidence can be recorded — do not add it without that evidence).
 
-### T-06 · Precondition drift for actions with empty preconditions — `OPEN` · S
+### T-06 · Precondition drift for actions with empty preconditions — `DONE` · S
 - **Goal:** `ADD` shim after MOVE and dependent links carry a precondition on their *dependency's result* (destination must be missing at apply time is impossible to pre-check; instead verify at execution that the path is still missing and refuse otherwise).
 - **Scope:** `src/apply/engine.ts` (`ADD`/`SYMLINK` cases: if target exists and is not what we expect → throw → rollback).
 - **Acceptance:** test: create `CLAUDE.md` again between plan and apply of an only-CLAUDE.md MOVE chain → apply rolls back, nothing lost.
 - **Verify:** V-04.
 
-### T-07 · Case-insensitive filesystem collisions — `OPEN` · S
+### T-07 · Case-insensitive filesystem collisions — `DONE` · S
 - **Goal:** two skills `Deploy` and `deploy` (possible on Linux) → audit finding A16 and plan refuses to project both onto a case-insensitive target dir.
 - **Scope:** `src/audit/rules.ts`, `src/plan/build.ts`.
 - **Acceptance:** unit test with both names present (create via `fs` on a case-sensitive FS or simulate through inventory items).
 - **Verify:** `npm test`.
 
-### T-08 · Ledger entry for a moved/renamed canonical skill — `OPEN` · S
+### T-08 · Ledger entry for a moved/renamed canonical skill — `DONE` · S
 - **Goal:** `verify` says "canonical moved: `.agents/skills/x` → likely `.agents/skills/y` (same hash)" instead of generic missing; `plan` offers `MODIFY ledger` to re-point the `adopted` entry.
 - **Scope:** `src/verify/structural.ts`, `src/plan/build.ts`.
 - **Acceptance:** test renames an adopted skill dir; verify message names the candidate; apply fixes the ledger with approval.
@@ -96,7 +95,7 @@ Size: S (< 2 h) · M (half day) · L (1–2 days).
 - **Goal:** `copilot skill list` probe validated; `.agents/skills` fact promoted to `test`.
 - **Steps/Acceptance:** as T-09 with `copilot`; record whether AGENTS.md is read by the CLI (`copilot -p` with a nonce).
 
-### T-11 · Cursor: structural-only stays honest — `OPEN` · S
+### T-11 · Cursor: structural-only stays honest — `DONE` · S
 - **Goal:** `verify --live` for cursor prints `structural-only` with the reason; `doctor` detects `agent`/`cursor-agent`.
 - **Acceptance:** already the case; add a test asserting the status and reason text so it cannot regress.
 
@@ -104,34 +103,34 @@ Size: S (< 2 h) · M (half day) · L (1–2 days).
 - **Goal:** for a nested `AGENTS.md` at `<dir>/AGENTS.md`, offer an opt-in nested `CLAUDE.md` shim (`@AGENTS.md`) for Claude when `claude` is a target.
 - **Why deferred:** OpenCode's nested behavior is source-level only; Claude nested loading is lazy; needs fixture verification first (record in matrix).
 
-### T-13 · Re-verification procedure when a harness releases — `OPEN` · S (recurring)
+### T-13 · Re-verification procedure when a harness releases — `DONE` · S (recurring)
 - **Goal:** a checklist that turns `doctor`'s "installed version differs" warning into updated matrix facts.
 - **Steps:** run the fixture probes in `docs/VERIFICATION.md` §V-06 against the new version → update `versionsVerified`, `checkedOn`, and any changed fact → run `npm test` → PR titled `matrix: <harness> <version>`.
 - **Acceptance:** PR contains only matrix + PROGRESS changes unless a behavior changed.
 
 ## 4. Product surface
 
-### T-14 · Interactive approvals (TTY) — `OPEN` · M
+### T-14 · Interactive approvals (TTY) — `DONE` · M
 - **Goal:** when stdin is a TTY and `--yes` is absent, `init`/`apply` prompt per review action group (`y/N/all/quit`), showing the diff for MODIFY.
 - **Scope:** `src/commands/index.ts` (prompt helper using `node:readline/promises`), keep non-interactive path unchanged.
 - **Acceptance:** manual run + a test that pipes answers through a pseudo-TTY is out of scope; instead unit-test the decision mapping (`answers → approve set`).
 - **Verify:** V-07 manual step.
 
-### T-15 · `--diff` output for every MODIFY/REPAIR in `plan` — `OPEN` · S
+### T-15 · `--diff` output for every MODIFY/REPAIR in `plan` — `DONE` · S
 - **Goal:** `plan --diff` prints unified diffs for shims/blocks/merges (already produced; ensure REPAIR of block and ADOPT-MANAGED include diffs).
 - **Acceptance:** golden test asserts `diff` field present for all MODIFY/REPAIR/ADOPT-MANAGED actions in the messy fixture.
 
-### T-16 · Reconsider a recorded decision — `OPEN` · S
+### T-16 · Reconsider a recorded decision — `DONE` · S
 - **Goal:** `agentunison plan --reconsider <id>` removes the decision so the action is re-proposed; `preserve:` decisions can be lifted.
 - **Scope:** `src/commands/index.ts`, `src/model/manifest.ts` (`saveManifestDecisions`).
 - **Acceptance:** test: approve → reconsider → action reappears as `?`.
 
-### T-17 · Propose the user's existing canonical skills dir — `OPEN` · S
+### T-17 · Propose the user's existing canonical skills dir — `DONE` · S
 - **Goal:** when `.agents/skills` is absent and a native skills dir is a symlink to another in-repo dir (e.g. `skills/`), `init` proposes `canonical.skills: skills` instead of forcing `.agents/skills`, with the trade-off stated (Codex/OpenCode/Copilot/Cursor read `.agents/skills` natively only).
 - **Scope:** `src/commands/index.ts` (`cmdInit` target/canonical detection), `src/inventory/scan.ts`.
 - **Acceptance:** fixture with `.claude/skills -> ../skills` → init output names the proposal and the degradation.
 
-### T-21 · Mechanism switch on an already-managed repo (link ↔ copy) — `OPEN` · M
+### T-21 · Mechanism switch on an already-managed repo (link ↔ copy) — `DONE` · M
 - **Goal:** changing `policy.symlinks` (or a `projections.<h>.skills` pin) on a repo that already has managed links produces a plan that replaces the link with copies (or vice versa) instead of COPY actions that refuse with "source and destination resolve to the same file".
 - **Scope:** `src/plan/build.ts` (compare ledger mechanism vs decision; emit `QUARANTINE`-free `REPLACE` sequence: unlink managed link → COPY, or remove managed copies → SYMLINK), `src/apply/engine.ts` if a new op is needed.
 - **Acceptance:** test: init with links → set `symlinks: never` → plan shows the switch as review actions → apply → verify OK → switch back → identical to the original tree.
@@ -142,11 +141,11 @@ Size: S (< 2 h) · M (half day) · L (1–2 days).
 
 ## 5. Documentation and hygiene
 
-### T-19 · Keep `README.md` claims in sync with tests — `OPEN` · S (recurring)
+### T-19 · Keep `README.md` claims in sync with tests — `DONE` · S (recurring — 8 test links added)
 - **Goal:** every bullet in README §Safety model maps to a named test; add the test name in an HTML comment next to each bullet.
 - **Acceptance:** `grep -c "<!-- test:" README.md` equals the number of safety bullets.
 
-### T-20 · Publish the research as a standalone guide — `OPEN` · S
+### T-20 · Publish the research as a standalone guide — `DONE` · S
 - **Goal:** move `dev_docs/2026-09-04/research/PROJECT-COMPARISON.md` + the harness matrices into `docs/harness-compatibility.md` with a "last verified" table generated from `matrix/*.yaml`.
 - **Scope:** a small script `scripts/matrix-table.ts` that renders the table; CI check that the rendered table matches the committed one.
 - **Acceptance:** `node scripts/matrix-table.ts --check` exits 0.

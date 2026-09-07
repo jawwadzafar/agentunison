@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { tmpRepo, withManifest, planFor, applyAll, verifyOk, read, exists, isLink, canSymlink, write } from './helpers/repo.ts';
+import { tmpRepo, withManifest, planFor, applyAll, verifyOk, read, exists, isLink, write } from './helpers/repo.ts';
 import { scanInventory } from '../src/inventory/scan.ts';
 import { decideProjections } from '../src/policy/decide.ts';
 import { buildCtx } from '../src/commands/index.ts';
@@ -88,23 +88,11 @@ test('empty .claude/skills dir → whole-dir link; skills added later need no re
   fs.mkdirSync(path.join(r, '.claude/skills'), { recursive: true });
   withManifest(r, ['claude']);
   applyAll(r);
-  if (canSymlink(r)) {
-    assert.ok(isLink(r, '.claude/skills'));
-    write(r, '.agents/skills/new-one/SKILL.md', skill('new-one'));
-    assert.ok(exists(r, '.claude/skills/new-one/SKILL.md'), 'visible through the dir link');
-    assert.equal(verifyOk(r).ok, true);
-    assert.equal(planFor(r).plan.actions.filter((a) => a.op !== 'PRESERVE').length, 0);
-  } else {
-    // symlink-less platform: copies degrade per skill; a new canonical skill shows up as a COPY
-    assert.ok(!isLink(r, '.claude/skills'));
-    write(r, '.agents/skills/new-one/SKILL.md', skill('new-one'));
-    const { plan } = planFor(r);
-    assert.ok(plan.actions.some((a) => a.op === 'COPY' && a.path === '.claude/skills/new-one' && a.risk === 'safe'), 'new skill is proposed as a managed copy');
-    applyAll(r);
-    assert.ok(exists(r, '.claude/skills/new-one/SKILL.md'), 'copy projects the new skill after apply');
-    assert.equal(verifyOk(r).ok, true);
-    assert.equal(planFor(r).plan.actions.filter((a) => a.op !== 'PRESERVE').length, 0);
-  }
+  assert.ok(isLink(r, '.claude/skills'));
+  write(r, '.agents/skills/new-one/SKILL.md', skill('new-one'));
+  assert.ok(exists(r, '.claude/skills/new-one/SKILL.md'), 'visible through the dir link');
+  assert.equal(verifyOk(r).ok, true);
+  assert.equal(planFor(r).plan.actions.filter((a) => a.op !== 'PRESERVE').length, 0);
 });
 
 test('spec-violating native skill is preserved with a reason, not moved', () => {
