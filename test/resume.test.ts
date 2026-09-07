@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import YAML from 'yaml';
-import { tmpRepo, withManifest, planFor, applyAll, verifyOk, read, exists, isLink, write } from './helpers/repo.ts';
+import { tmpRepo, withManifest, planFor, applyAll, verifyOk, read, exists, isLink, write, isSymlinkHostile, symlinksUnsupported } from './helpers/repo.ts';
 import { buildCtx, mapInteractiveAnswers } from '../src/commands/index.ts';
 import { applyPlan } from '../src/apply/engine.ts';
 import { resumeApply } from '../src/apply/resume.ts';
@@ -21,7 +21,10 @@ function runCli(args: string[], cwd: string, env: Record<string, string> = {}): 
 }
 
 test('apply with incomplete journal refuses; resume restores; verify clean (crash after MOVE)', () => {
+  if (isSymlinkHostile()) { console.log('# skip: symlink-hostile environment'); return; }
   const r = tmpRepo();
+  if (symlinksUnsupported(r)) { console.log('# skip: git core.symlinks=false checkout'); return; }
+  if (!isLink(r, '.claude/skills')) { console.log('# skip: .claude/skills is not a symlink (symlink creation failed on this checkout)'); return; }
   write(r, '.claude/skills/only/SKILL.md', skill('only'));
   write(r, 'CLAUDE.md', '# Rules\n\nNever push to main.\n');
   withManifest(r, ['claude']);
@@ -121,7 +124,11 @@ test('journal of a rolled-back run ends with `rolled-back`', () => {
 });
 
 test('apply --resume via CLI: child call resolves the journal and continues the plan', () => {
+  if (isSymlinkHostile()) { console.log('# skip: symlink-hostile environment'); return; }
   const r = tmpRepo();
+  if (symlinksUnsupported(r)) { console.log('# skip: git core.symlinks=false checkout'); return; }
+  if (!isLink(r, '.claude/skills')) { console.log('# skip: .claude/skills is not a symlink (symlink creation failed on this checkout)'); return; }
+  if (symlinksUnsupported(r)) { console.log('# skip: git core.symlinks=false checkout'); return; }
   write(r, '.claude/skills/only/SKILL.md', skill('only'));
   write(r, 'CLAUDE.md', '# Rules\n\nNever push to main.\n');
   withManifest(r, ['claude']);

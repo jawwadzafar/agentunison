@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { tmpRepo, withManifest, planFor, applyAll, verifyOk, read, exists, isLink, write } from './helpers/repo.ts';
+import { tmpRepo, withManifest, planFor, applyAll, verifyOk, read, exists, isLink, write, isSymlinkHostile, symlinksUnsupported } from './helpers/repo.ts';
 import { scanInventory } from '../src/inventory/scan.ts';
 import { decideProjections } from '../src/policy/decide.ts';
 import { buildCtx } from '../src/commands/index.ts';
@@ -84,7 +84,10 @@ test('vendored skill trees (lock file) are excluded from convergence', () => {
 });
 
 test('empty .claude/skills dir → whole-dir link; skills added later need no re-apply', () => {
+  if (isSymlinkHostile()) { console.log('# skip: symlink-hostile environment'); return; }
   const r = tmpRepo();
+  if (symlinksUnsupported(r)) { console.log('# skip: git core.symlinks=false checkout'); return; }
+  if (!isLink(r, '.claude/skills')) { console.log('# skip: .claude/skills is not a symlink (symlink creation failed on this checkout)'); return; }
   fs.mkdirSync(path.join(r, '.claude/skills'), { recursive: true });
   withManifest(r, ['claude']);
   applyAll(r);

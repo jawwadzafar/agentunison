@@ -94,3 +94,36 @@ export function treeHash(root: string): string {
 }
 
 export const silentIO: CommandIO = { out: () => {}, err: () => {}, json: false, isTTY: false };
+
+export function isSymlinkHostile(): boolean {
+  try {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'au-symlink-test-'));
+    const dir = path.join(tmp, 'd'); fs.mkdirSync(dir);
+    const fileLink = path.join(tmp, 'fl'), dirLink = path.join(tmp, 'dl');
+    fs.writeFileSync(path.join(dir, 'a'), '');
+    let fileOk = false, dirOk = false;
+    try { fs.symlinkSync(path.join(dir, 'a'), fileLink); fileOk = fs.lstatSync(fileLink).isSymbolicLink(); fs.unlinkSync(fileLink); } catch { /* ignore */ }
+    try { fs.symlinkSync(dir, dirLink); dirOk = fs.lstatSync(dirLink).isSymbolicLink(); fs.unlinkSync(dirLink); } catch { /* ignore */ }
+    try { fs.rmSync(tmp, { force: true, recursive: true }); } catch { /* ignore */ }
+    // hostile if either file-link OR dir-link creation failed (Windows often allows files but not dirs without elevation)
+    return !(fileOk && dirOk);
+  } catch { return true; }
+}
+
+export function symlinksUnsupported(root: string): boolean {
+  if (isSymlinkHostile()) return true;
+  try {
+    const core = require('node:child_process').execFileSync('git', ['config', '--get', 'core.symlinks'], { cwd: root, encoding: 'utf8' }).trim();
+    return core === 'false';
+  } catch { return false; }
+}
+
+/** Read a single key from the managed ledger. Returns undefined if not present. */
+export function readLedgerEntry(root: string, entryPath: string, key: 'mechanism' | 'harness' | 'target' | 'sha256' = 'mechanism'): string | undefined {
+  try {
+    const text = fs.readFileSync(path.join(root, '.agentunison/local/ledger.yaml'), 'utf8');
+    const ledger = require('yaml').parse(text);
+    const entry = (ledger.managed ?? []).find((e: { path: string }) => e.path === entryPath);
+    return ((entry as Record<string,string> | undefined)?.[key]);
+  } catch { return undefined; }
+}

@@ -42,8 +42,11 @@ export function verifyStructural(ctx: Ctx, inv: Inventory): VerifyReport {
         if (t === 'file') push({ code: 'environment', path: e.path, message: 'committed symlink materialized as a text file (checkout without symlink support)', fix: 'git config core.symlinks true && git checkout -- ' + e.path + ' ; or set policy.symlinks: never and re-plan' });
         else if (t !== 'symlink') push({ code: 'drift', path: e.path, message: `expected a symlink, found ${t}`, fix: 'agentunison plan' });
         else {
-          const raw = readlink(a);
-          if (raw !== e.target && localMech !== 'junction') push({ code: 'drift', path: e.path, message: `link target is ${raw}, ledger says ${e.target}` });
+          const raw = readlink(a) ?? '';
+          // Normalize path separators for cross-platform comparison (Windows: readlink returns backslashes)
+          const rawN = raw.replace(/\\/g, '/');
+          const targetN = (e.target ?? '').replace(/\\/g, '/');
+          if (rawN !== targetN && localMech !== 'junction') push({ code: 'drift', path: e.path, message: `link target is ${raw}, ledger says ${e.target}` });
           const r = resolveLink(a);
           if (r.kind !== 'ok') push({ code: 'drift', path: e.path, message: `link is ${r.kind}` });
           else if (!isInside(ctx.root, r.realpath)) push({ code: 'invariant', path: e.path, message: 'link escapes the repository' });
