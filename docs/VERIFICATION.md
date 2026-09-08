@@ -179,3 +179,4 @@ au plan --cwd "$R" --json | jq '.schema, .pending'               # 1, {review, d
 au verify --cwd "$R" --json | jq '.schema, .ok'                   # 1, true
 ```
 Fields are stable within schema 1; adding fields is allowed, renaming/removing is a breaking change.
+Reference checklist for doctor warning: see dev_docs/2026-09-04/agentunison/T13-REVERIFICATION.md (written 2026-09-04 for T-13).

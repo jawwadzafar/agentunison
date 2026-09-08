@@ -27,4 +27,4 @@ jobs:
       - run: npm test
       - run: npm run build
       - name: dogfood — the product repo must verify clean
-        run: node bin/agentunison.js verify
+        run: node scripts/dogfood-verify.mjs

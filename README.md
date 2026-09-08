@@ -45,20 +45,20 @@ Add `agentunison verify` to CI. It exits non-zero on drift.
 ## Safety model
 
 - **Plan first.** Every action carries preconditions (hashes, path types) captured at plan time;
-  `apply` re-checks all of them before writing anything and refuses the whole run on a mismatch.
+  `apply` re-checks all of them before writing anything and refuses the whole run on a mismatch. <!-- test:safety.test.ts+resume.test.ts -->
 - **Never destroy.** Displaced content is quarantined under `.agentunison/local/quarantine/<ts>/`
-  with a manifest. `DELETE` never appears in a plan unless you ask (`--allow-delete`).
+  with a manifest. `DELETE` never appears in a plan unless you ask (`--allow-delete`). <!-- test:safety.test.ts rollback -->
 - **Own only what you create.** The ledger is the boundary. Foreign files (other tools' markers,
-  plugin caches, vendored skill trees) are listed and left alone.
+  plugin caches, vendored skill trees) are listed and left alone. <!-- test:safety.test.ts foreign+vendored -->
 - **Approval for anything that changes an existing file** (`MOVE`, `MODIFY`, `ADOPT`,
-  `QUARANTINE`, `REPAIR`, `BACKPORT`). Approvals are recorded so re-runs do not re-ask.
+  `QUARANTINE`, `REPAIR`, `BACKPORT`). Approvals are recorded so re-runs do not re-ask. <!-- test:resume.test.ts T-14 -->
 - **Exact-match merges only.** When `CLAUDE.md` and `AGENTS.md` diverge, shared paragraphs are
   byte-equal after whitespace normalization; paragraphs only in `CLAUDE.md` are adopted into
-  `AGENTS.md` under a review heading or kept as Claude-specific — your call, per paragraph.
-- **Loud fallbacks.** If a symlink cannot be made, a copy is made, recorded as a copy, and reported.
+  `AGENTS.md` under a review heading or kept as Claude-specific — your call, per paragraph. <!-- test:safety.test.ts exact-match -->
+- **Loud fallbacks.** If a symlink cannot be made, a copy is made, recorded as a copy, and reported. <!-- test:safety.test.ts symlink -->
 - **Rollback.** A failure mid-apply reverses the completed operations; a write-ahead journal
-  records every step.
-- **Idempotent.** A second `apply` is a byte-identical no-op.
+  records every step. <!-- test:safety.test.ts rollback -->
+- **Idempotent.** A second `apply` is a byte-identical no-op. <!-- test:clean.test.ts -->
 
 ## Commands
 

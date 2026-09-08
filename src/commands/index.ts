@@ -11,6 +11,7 @@ import { runAudit } from '../audit/rules.ts';
 import { decideProjections } from '../policy/decide.ts';
 import { buildPlan } from '../plan/build.ts';
 import { applyPlan, type ApplyResult } from '../apply/engine.ts';
+import { resumeApply, type ResumeResult } from '../apply/resume.ts';
 import { verifyStructural } from '../verify/structural.ts';
 import { verifyLive, whichBinary, binaryVersion } from '../verify/live.ts';
 import { abs, existsExact, findRepoRoot, pathType, readTextIfFile, writeFileSafe, removePath, copyTree, resolveLink } from '../util/fs.ts';
@@ -18,6 +19,15 @@ import { parseShim, removeBlock, HS_BEGIN, HS_END } from '../adapters/shim.ts';
 import { generateOpenCodeAgent } from '../adapters/agents.ts';
 
 export interface CommandIO { out: (s: string) => void; err: (s: string) => void; json: boolean; isTTY: boolean }
+
+function detectCanonicalSkillsDir(ctx: Ctx, inv: Inventory): string {
+  const skillsLink = inv.items.find((i) => i.path === '.claude/skills' || i.path === '.cursor/skills' || i.path === '.codex/skills');
+  if (skillsLink && skillsLink.type === 'symlink' && skillsLink.resolvesTo && !skillsLink.resolvesTo.startsWith('..') && !skillsLink.resolvesTo.startsWith('outside')) {
+    const relTarget = skillsLink.resolvesTo.startsWith('.') ? path.join(path.dirname(skillsLink.path), skillsLink.resolvesTo) : skillsLink.resolvesTo;
+    if (pathType(abs(ctx.root, relTarget)) === 'dir') return relTarget;
+  }
+  return '.agents/skills';
+}
 
 export function buildCtx(cwd: string): Ctx {
   const root = findRepoRoot(cwd);
@@ -127,20 +137,34 @@ export function cmdAudit(ctx: Ctx, io: CommandIO): number {
   return findings.some((f) => f.severity === 'high' || f.severity === 'medium') ? 2 : 0;
 }
 
-export function cmdPlan(ctx: Ctx, io: CommandIO, opts: { diff: boolean }): number {
+export function cmdPlan(ctx: Ctx, io: CommandIO, opts: { diff: boolean; reconsider?: string }): number {
   if (!ctx.manifest) { io.err('No agentunison.yaml — run `agentunison init` first (it plans before writing).'); return 1; }
+  if (opts.reconsider) {
+    if (!ctx.manifest) { io.err('No agentunison.yaml — cannot edit decisions.'); return 1; }
+    const before = ctx.manifest.decisions ?? {};
+    if (!(opts.reconsider in before)) { io.err(`no decision recorded for ${opts.reconsider}; nothing to lift`); return 1; }
+    const after = { ...before }; delete (after as Record<string, string>)[opts.reconsider];
+    saveManifestDecisions(ctx.root, after);
+    io.out(`reconsidered ${opts.reconsider} (was: ${(before as Record<string, string>)[opts.reconsider]})`);
+    ctx.manifest = loadManifest(ctx.root);
+  }
   const { plan } = pipeline(ctx);
   io.out(io.json ? JSON.stringify(plan, null, 2) : formatPlan(plan, { diff: opts.diff }));
   return plan.actions.some((a) => a.op !== 'PRESERVE') ? 2 : 0;
 }
 
-export function cmdApply(ctx: Ctx, io: CommandIO, opts: { approve: string[]; allowDelete: boolean; planFile?: string }): number {
+export function cmdApply(ctx: Ctx, io: CommandIO, opts: { approve: string[]; allowDelete: boolean; planFile?: string; resume?: boolean }): number {
   if (!ctx.manifest) { io.err('No agentunison.yaml — run `agentunison init` first.'); return 1; }
+  if (opts.resume) return cmdResume(ctx, io, opts);
   let plan: Plan;
   if (opts.planFile) plan = JSON.parse(fs.readFileSync(opts.planFile, 'utf8')) as Plan;
   else plan = pipeline(ctx).plan;
   const approve = opts.approve.includes('all') ? 'all' : new Set(opts.approve);
   const res = applyPlan(ctx, plan, { approve, allowDelete: opts.allowDelete });
+  if (res.blocked) {
+    io.err(`BLOCKED: an incomplete journal exists at ${res.blocked.journal} (last in-flight: ${res.blocked.actionId} ${res.blocked.op}). Re-run with \`agentunison apply --resume --approve ...\` (and --plan if you used one).`);
+    return 7;
+  }
   if (res.refused) {
     io.err(`REFUSED: ${res.refused.action.id} — precondition on ${res.refused.precondition.path}: ${res.refused.actual}. Nothing was written. Re-run \`agentunison plan\`.`);
     return 7;
@@ -150,6 +174,56 @@ export function cmdApply(ctx: Ctx, io: CommandIO, opts: { approve: string[]; all
     return 1;
   }
   // record approvals as decisions so re-runs do not re-ask
+  const decisions = { ...ctx.manifest.decisions };
+  for (const a of res.executed) if (a.risk !== 'safe') decisions[a.id] = 'approve';
+  if (Object.keys(decisions).length !== Object.keys(ctx.manifest.decisions).length && existsExact(abs(ctx.root, MANIFEST_FILE))) saveManifestDecisions(ctx.root, decisions);
+  reportApply(res, io);
+  return 0;
+}
+
+export function cmdResume(ctx: Ctx, io: CommandIO, opts: { approve: string[]; allowDelete: boolean; planFile?: string }): number {
+  if (!ctx.manifest) { io.err('No agentunison.yaml — run `agentunison init` first.'); return 1; }
+  const r: ResumeResult = resumeApply(ctx, { approve: opts.approve, allowDelete: opts.allowDelete });
+  if (r.nothing) { io.out('Nothing to resume: no incomplete journal.'); return 0; }
+  if (r.error) { io.err(r.error); return 1; }
+  // report resolution
+  if (!io.json) {
+    io.out(`resume: journal ${r.journal}`);
+    for (const id of r.completed) io.out(`  completed   ${id}`);
+    for (const id of r.reversed) io.out(`  reversed    ${id}`);
+    for (const id of r.unknown) io.out(`  unknown     ${id}`);
+    for (const w of r.warnings) io.out(`  WARNING     ${w}`);
+  }
+  // Continuation: load the saved plan (if given) or re-plan, skipping already-completed action ids.
+  let plan: Plan | undefined;
+  if (opts.planFile) {
+    plan = JSON.parse(fs.readFileSync(opts.planFile, 'utf8')) as Plan;
+  } else {
+    const ctxFresh = buildCtx(ctx.root);
+    plan = pipeline(ctxFresh).plan;
+  }
+  if (r.completed.size) {
+    const skip = new Set(r.completed);
+    plan = { ...plan, actions: plan.actions.filter((a) => !skip.has(a.id)) };
+  }
+  if (plan.actions.length === 0) {
+    io.out('resume: plan fully resolved by the journal; no further actions to apply.');
+    return 0;
+  }
+  const approve = opts.approve.includes('all') ? 'all' : new Set(opts.approve);
+  const res = applyPlan(ctx, plan, { approve, allowDelete: opts.allowDelete });
+  if (res.refused) {
+    io.err(`REFUSED after resume: ${res.refused.action.id} — precondition on ${res.refused.precondition.path}: ${res.refused.actual}. Nothing was written. Re-run \`agentunison plan\`.`);
+    return 7;
+  }
+  if (res.rolledBack) {
+    io.err(`FAILED after resume at ${res.rolledBack.failedAction}: ${res.rolledBack.error}. Rolled back ${res.rolledBack.restored.length} operation(s)${res.rolledBack.notRestored.length ? `; could NOT restore: ${res.rolledBack.notRestored.join('; ')}` : ''}. Journal: .agentunison/local/journal/`);
+    return 1;
+  }
+  if (res.blocked) {
+    io.err(`BLOCKED again after resume: ${res.blocked.actionId} ${res.blocked.op} at ${res.blocked.journal}. Re-run with \`agentunison apply --resume\`.`);
+    return 7;
+  }
   const decisions = { ...ctx.manifest.decisions };
   for (const a of res.executed) if (a.risk !== 'safe') decisions[a.id] = 'approve';
   if (Object.keys(decisions).length !== Object.keys(ctx.manifest.decisions).length && existsExact(abs(ctx.root, MANIFEST_FILE))) saveManifestDecisions(ctx.root, decisions);
@@ -196,8 +270,13 @@ export function cmdInit(ctx: Ctx, io: CommandIO, opts: { targets?: HarnessId[]; 
   if (ctx.manifest) { io.out('agentunison.yaml already exists — running plan + apply.'); return cmdApply(ctx, io, { approve: opts.approve, allowDelete: opts.allowDelete }); }
   const inv0 = scanInventory(ctx);
   const targets = opts.targets ?? detectTargets(ctx, inv0);
+  // T-17: propose user's existing canonical skills dir when .agents/skills absent
+  // but a native skills dir is a symlink to another in-repo directory.
+  const proposedSkillsDir = detectCanonicalSkillsDir(ctx, inv0);
   const manifest = defaultManifest(targets);
-  const ctx2: Ctx = { ...ctx, manifest };
+  const manifestWithSkills = proposedSkillsDir === '.agents/skills' ? manifest : { ...manifest, canonical: { ...manifest.canonical, skills: proposedSkillsDir } };
+  const ctx2: Ctx = { ...ctx, manifest: manifestWithSkills };
+  if (proposedSkillsDir !== '.agents/skills') io.out(`note: using '${proposedSkillsDir}' as canonical skills dir (your existing skills directory). Codex/OpenCode/Copilot/Cursor read .agents/skills natively; skills in '${proposedSkillsDir}' are still accessible but harness-native skill discovery may not reach them without configuration.`);
   const { inv, findings, plan } = pipeline(ctx2);
   const existingSetup = inv.items.some((i) => i.cls !== 'managed' && i.kind !== 'manifest');
   io.out(`targets: ${targets.join(', ')}${opts.targets ? '' : ' (detected; pass --targets to change)'}`);
@@ -274,3 +353,20 @@ export function cmdUninstall(ctx: Ctx, io: CommandIO, opts: { keepLinks: boolean
 }
 
 export { saveLedger, saveLocalState, path };
+
+/* T-14: interactive approval mapping (testable without real TTY) */
+export function mapInteractiveAnswers(answers: string[], reviewIds: string[]): { approve: Set<string>; quit: boolean; all: boolean } {
+  const approve = new Set<string>();
+  let quit = false, all = false;
+  const ans = answers.map(a => a.trim().toLowerCase());
+  // If any answer is 'all', the whole batch is approved; if 'quit', stop
+  if (ans.includes('all')) return { approve: new Set(['all']), quit: false, all: true };
+  if (ans.includes('quit')) return { approve: new Set(), quit: true, all: false };
+  // Per-id mapping: answers aligned 1:1 with reviewIds; 'y' approves, 'n' skips
+  for (let i = 0; i < reviewIds.length && i < ans.length; i++) {
+    const val = ans[i];
+    const id = reviewIds[i];
+    if (val === 'y' && id) approve.add(id);
+  }
+  return { approve, quit, all };
+}

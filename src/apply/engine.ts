@@ -7,11 +7,13 @@ import { sha256Path, sha256Text, sha256Tree } from '../util/hash.ts';
 import { ensureLocalDir, saveLedger, saveLocalState, LOCAL_DIR } from '../model/manifest.ts';
 import { shimHash } from '../adapters/shim.ts';
 import { stringifyStable } from '../util/yamlio.ts';
+import { findIncompleteJournal, readJournalFile } from './journal.ts';
 
 export interface ApplyOptions {
   approve: Set<string> | 'all';
   allowDelete: boolean;
   now?: () => string;              // injectable clock for tests
+  resume?: boolean;                  // continue from incomplete journal
 }
 
 export interface ApplyResult {
@@ -21,6 +23,7 @@ export interface ApplyResult {
   warnings: string[];
   quarantineDir?: string;
   rolledBack?: { failedAction: string; error: string; restored: string[]; notRestored: string[] };
+  blocked?: { journal: string; actionId: string; op: string };
 }
 
 /**
@@ -47,6 +50,11 @@ export function applyPlan(ctx: Ctx, plan: Plan, opts: ApplyOptions): ApplyResult
   }
 
   // Phase 1 — preconditions
+  const open = findIncompleteJournal(ctx.root);
+  if (open && !opts.resume) {
+    const inFlight = open.entries.find((e) => e.status === 'intent');
+    return { executed: [], skipped, warnings: [], blocked: { journal: path.relative(ctx.root, open.file), actionId: String(inFlight?.id ?? '?'), op: String(inFlight?.op ?? '?') } };
+  }
   for (const a of selected) {
     for (const p of a.preconditions) {
       const actual = describeNow(ctx.root, p.path);
@@ -109,8 +117,10 @@ export function applyPlan(ctx: Ctx, plan: Plan, opts: ApplyOptions): ApplyResult
   };
   try {
   for (const a of selected) {
-    const rec: Record<string, unknown> = { id: a.id, op: a.op, path: a.path, source: a.source, status: 'intent' };
+    const rec: Record<string, unknown> = { ...a, status: 'intent' };
     journal.push(rec); flush();
+    const envBefore = process.env['AGENTUNISON_TEST_CRASH_BEFORE'];
+    if (envBefore && (envBefore === a.id || envBefore === String(a.op))) { process.exit(1); }
     const target = abs(ctx.root, a.path);
     const undo: Undo = { id: a.id, steps: [], desc: `${a.op} ${a.path}` };
     if (['ADD', 'MODIFY', 'REPAIR', 'ADOPT-MANAGED', 'SYMLINK', 'COPY', 'GENERATE', 'BACKPORT'].includes(a.op)) undo.steps.push(snapshotFile(a.path));
@@ -120,6 +130,12 @@ export function applyPlan(ctx: Ctx, plan: Plan, opts: ApplyOptions): ApplyResult
     if (pathType(target) === 'symlink' && !['SYMLINK', 'QUARANTINE', 'ADOPT-MANAGED'].includes(a.op)) throw new Error(`refusing to write through symlink ${a.path}`);
     switch (a.op) {
       case 'ADD': {
+        // T-06: actions with empty preconditions (e.g. ADD shim after MOVE) verify at execution
+        // time that the path is still in the post-dependency state (missing).  If the user
+        // re-created the file between plan and apply, refuse rather than overwriting it.
+        if (a.preconditions.length === 0 && pathType(target) !== 'missing') {
+          throw new Error(`precondition drift on ${a.path}: path exists but plan assumed it would be missing (dependency result changed since planning — re-run plan)`);
+        }
         if (a.kind === 'skills-root') { fs.mkdirSync(target, { recursive: true }); if (fs.readdirSync(target).length === 0) fs.writeFileSync(path.join(target, '.gitkeep'), ''); break; }
         writeFileSafe(target, a.content ?? '');
         if (a.mechanism === 'shim') upsert({ path: a.path, kind: 'instructions', mechanism: 'shim', ...(a.harness ? { harness: a.harness } : {}), sha256: shimHash(a.content ?? '') });
@@ -128,6 +144,19 @@ export function applyPlan(ctx: Ctx, plan: Plan, opts: ApplyOptions): ApplyResult
       }
       case 'MODIFY':
       case 'REPAIR': {
+        // T-08: MODIFY ledger (repoint a moved/renamed adopted skill entry)
+        if (a.id.includes(':repoint-entry:')) {
+          const spec = a.id.split(':repoint-entry:')[1]!.trim();
+          const parts = spec.split(/\s*->\s*/);
+          const oldPath = parts[0]!.trim();
+          const newPath = (parts[1] ?? oldPath).trim();
+          const idx = ledger.managed.findIndex((e) => e.path === oldPath);
+          if (idx === -1) throw new Error(`ledger repoint failed: no entry for ${oldPath}`);
+          const existing: LedgerEntry = ledger.managed[idx]!;
+          ledger.managed[idx] = { ...existing, path: newPath.trim() };
+          saveLedger(ctx.root, ledger);
+          break;
+        }
         writeFileSafe(target, a.content ?? '');
         if (a.mechanism === 'shim') upsert({ path: a.path, kind: 'instructions', mechanism: 'shim', ...(a.harness ? { harness: a.harness } : {}), sha256: shimHash(a.content ?? '') });
         if (a.mechanism === 'block' || a.id.endsWith(':block') || a.id.includes('merge-from')) recordBlock(ledger, a.path, a.content ?? '', ctx);
@@ -216,6 +245,8 @@ export function applyPlan(ctx: Ctx, plan: Plan, opts: ApplyOptions): ApplyResult
         break;
     }
     rec['status'] = 'done'; flush();
+    const envAfter = process.env['AGENTUNISON_TEST_CRASH_AFTER'];
+    if (envAfter && (envAfter === a.id || envAfter === String(a.op))) { process.exit(1); }
     executed.push(a);
   }
   } catch (e) {
@@ -242,6 +273,7 @@ export function applyPlan(ctx: Ctx, plan: Plan, opts: ApplyOptions): ApplyResult
 
   saveLedger(ctx.root, ledger);
   saveLocalState(ctx.root, ctx.platform, local);
+  journal.push({ status: 'committed', executed: executed.map((e) => e.id) }); flush();
   const res: ApplyResult = { executed, skipped, warnings };
   if (quarantineDir) res.quarantineDir = quarantineDir;
   return res;

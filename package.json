@@ -13,6 +13,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --disable-warning=ExperimentalWarning --test \"test/**/*.test.ts\"",
     "test:live": "AGENTUNISON_LIVE=1 node --disable-warning=ExperimentalWarning --test \"test/live/*.test.ts\"",
+    "matrix-table": "node scripts/matrix-table.ts",
+    "matrix-table:check": "node scripts/matrix-table.ts --check",
     "dev": "node --disable-warning=ExperimentalWarning src/cli.ts"
   },
   "dependencies": { "yaml": "^2.9.0" },
